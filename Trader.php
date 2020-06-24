@@ -181,13 +181,14 @@ class Trader {
         }
 
         if (!$this->true_create_order('Limit', $this->side, $this->amount, $lastCandle['close'])) {
+            shell_exec("rm ".$this->tradeFile);
             $this->log->error("Failed to create order", ['side'=>$this->side]);
             return;
         }
         if (!$this->verify_limit_order()) {
             $this->log->error("limit order was not filled thus canceling",["timeframe"=>$this->timeFrame]);
             $this->bitmex->cancelAllOpenOrders($this->symbol);//change to true cancel
-            shell_exec("rm ".$this->tradeFile);
+            shell_exec('rm '.$this->tradeFile);
             return;
         }
         $this->log->info("limit Order got filled",['fill'=>True]);
@@ -211,8 +212,9 @@ class Trader {
             sleep(1);
 
         } while ($this->is_stop());
-        $this->bitmex->cancelAllOpenOrders($this->symbol);
+        $this->log->info("Trade have finished removing trade File", []);
         shell_exec("rm ".$this->tradeFile);
+        $this->bitmex->cancelAllOpenOrders($this->symbol);
     }
 }
 $trader = New Trader($argv[1], $argv[2], $argv[3]);
