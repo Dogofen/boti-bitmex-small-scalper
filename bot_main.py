@@ -28,9 +28,9 @@ while (1):
             json.dump(scalp_info, json_file)
         if data[-1]['close'] < float(band_low.iloc[-1]):
             os.system("php Trader.php {} Buy {} &".format(symbol, amount))
-            sleep(3)
+            sleep(5)
         if data[-1]['close'] > float(band_high.iloc[-1]):
             os.system("php Trader.php {} Sell {} &".format(symbol, amount))
-            sleep(3)
+            sleep(5)
 
         sleep(1)
