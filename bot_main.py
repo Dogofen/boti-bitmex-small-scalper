@@ -22,8 +22,7 @@ while (1):
         std = df.rolling(20).std()
         band_high = ema20 + 2*std
         band_low = ema20 - 2*std
-        emas = [float(ema8.iloc[-1]), float(ema12.iloc[-1]), float(ema26.iloc[-1])]
-        emas.sort()
+        emas = {'ema8':float(ema8.iloc[-1]), 'ema12':float(ema12.iloc[-1]), 'ema26':float(ema26.iloc[-1])}
         scalp_info = {'emas': emas, 'bands': [float(band_low.iloc[-1]), float(band_high.iloc[-1])], 'last': data[-1]}
         with open('{}{}'.format(symbol,outPutFile), 'w') as json_file:
             json.dump(scalp_info, json_file)

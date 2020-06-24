@@ -60,6 +60,7 @@ class Trader {
         else {
             $this->env = 'prod';
         }
+        $this->targets = array();
         $this->log->info("Finished Trade construction, proceeding",[]);
     }
 
@@ -81,9 +82,39 @@ class Trader {
         } while ($ticker['last'] == null);
         return $ticker;
     }
+    public function true_cancel_all_orders() {
+        $result = False;
+        $this->log->info("cancelling all open orders.", []);
+        do {
+            try {
+                $result = $this->bitmex->cancelAllOpenOrders($this->symbol);
+                sleep(1);
+            } catch (Exception $e) {
+                $this->log->error("Failed to sumbit", ['error'=>$e]);
+                break;
+            }
+        } while (!is_array($result));
+    }
+
+     public function true_edit($orderId, $amount, $stopPx) {
+        $result = False;
+        $this->log->info("editing order.", ["orderId" => $orderId]);
+        do {
+            try {
+                $result = $this->bitmex->editOrder($this->is_stop(), null, $amount, $stopPx);
+                sleep(1);
+            } catch (Exception $e) {
+                $this->log->error("Failed to sumbit", ['error'=>$e]);
+                break;
+            }
+
+        } while (!is_array($result));
+    }
+
 
     public function true_create_order($type, $side, $amount, $price, $stopPx = null) {
         $this->log->info("Sending a Create Order command", ['side'=>$side.' '.$amount.' contracts']);
+        $order = False;
         do {
             try {
                 $order = $this->bitmex->createOrder($this->symbol, $type, $side, $price, $amount, $stopPx);
@@ -108,7 +139,7 @@ class Trader {
             $this->log->info("Position successful, OrderId:".$order['orderID'], ['price'=>$order['price']]);
             break;
         } while (1);
-        return True;
+        return $order;
     }
 
     public function are_open_positions() {
@@ -124,7 +155,7 @@ class Trader {
     public function is_stop() {
         $openOrders= unserialize(file_get_contents($this->symbol.self::OPEN_ORDERS));
         foreach($openOrders as $order) {
-            if ($order["ordType"] == "StopLimit") {
+            if ($order["ordType"] == "Stop") {
                 return $order["orderID"];
             }
         }
@@ -173,12 +204,7 @@ class Trader {
         $scalpInfo = json_decode(json_encode($scalpInfo), true);
         $lastCandle = $scalpInfo['last'];
         $emas = $scalpInfo['emas'];
-        if (!$this->is_buy()) {
-            $this->targets = array_reverse($emas);
-        }
-        else {
-            $this->targets = $emas;
-        }
+        $this->targets = $emas;
 
         if (!$this->true_create_order('Limit', $this->side, $this->amount, $lastCandle['close'])) {
             shell_exec("rm ".$this->tradeFile);
@@ -187,7 +213,7 @@ class Trader {
         }
         if (!$this->verify_limit_order()) {
             $this->log->error("limit order was not filled thus canceling",["timeframe"=>$this->timeFrame]);
-            $this->bitmex->cancelAllOpenOrders($this->symbol);//change to true cancel
+            $this->true_cancel_all_orders();
             shell_exec('rm '.$this->tradeFile);
             return;
         }
@@ -195,26 +221,29 @@ class Trader {
 
         $this->log->info("Targets are: ", ['targets'=>$this->targets]);
         $this->log->info("stopLoss are", ['stopLoss'=>$this->stopLoss]);
-        $this->true_create_order('StopLimit', $this->get_opposite_trade_side(), $this->amount, $this->stopLoss[0], $this->stopLoss[0]);
+        $this->true_create_order('Stop', $this->get_opposite_trade_side(), $this->amount, null, $this->stopLoss[0]);
         sleep(2);
-        foreach ($this->targets as $target) {
-            $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->amount/$percentage), round($target, $this->priceRounds[$this->symbol]));
+        foreach ($emas as $key=>$target) {
+            $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->amount/$percentage), round($target, $this->priceRounds[$this->symbol]));
+            $this->targets[$key] = $order['orderID'];
             sleep(5);
         }
         do {
             if (!$this->is_limit()) {
-                $this->bitmex->cancelAllOpenOrders($this->symbol);
+                $this->true_cancel_all_orders();
             }
-            if ($this->amount != $this->sum_limit_orders()) {
-                $this->amount = $this->sum_limit_orders();
-                $this->bitmex->editOrder($this->is_stop(), $this->stopLoss[1], $this->amount, $this->stopLoss[1]);
+            else {
+                if ($this->amount != $this->sum_limit_orders()) {
+                    $this->amount = $this->sum_limit_orders();
+                    $this->true_edit($this->is_stop(), $this->amount, $this->stopLoss[1]);
+                }
             }
             sleep(1);
 
         } while ($this->is_stop());
         $this->log->info("Trade have finished removing trade File", []);
         shell_exec("rm ".$this->tradeFile);
-        $this->bitmex->cancelAllOpenOrders($this->symbol);
+        $this->true_cancel_all_orders();
     }
 }
 $trader = New Trader($argv[1], $argv[2], $argv[3]);
