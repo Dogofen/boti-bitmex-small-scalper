@@ -63,9 +63,6 @@ class Trader {
         $this->targets = array();
         $this->log->info("Finished Trade construction, proceeding",[]);
     }
-    public function __destruct() {
-        shell_exec("rm ".$this->tradeFile);
-    }
 
     public function is_buy() {
         return $this->side == 'Buy' ? 1:0;
