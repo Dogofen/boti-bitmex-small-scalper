@@ -22,6 +22,7 @@ class Trader {
     private $env;
     private $tradeFile;
     private $timeFrame;
+    private $startTime;
 
 
     public function __construct($symbol, $side, $amount) {
@@ -29,6 +30,7 @@ class Trader {
         if (file_exists($this->tradeFile)) {
             return;
         }
+        $this->startTime = microtime(true);
         $config = include('config.php');
         $this->bitmex = new BitMex($config['key'], $config['secret'], $config['testnet']);
         $this->timeFrame = $config['timeframe'];
@@ -241,6 +243,12 @@ class Trader {
             sleep(1);
 
         } while ($this->is_stop());
+        if (microtime(true) - $this->startTime < $this->timeFrame*60) {
+            $this->log->info("waiting the remaining of the timeframe to finish",['timeframe'=>$this->timeFrame]);
+            do {
+                sleep(1);
+            } while (microtime(true) - $this->startTime < $this->timeFrame*60);
+        }
         $this->log->info("Trade have finished removing trade File", []);
         shell_exec("rm ".$this->tradeFile);
         $this->true_cancel_all_orders();
