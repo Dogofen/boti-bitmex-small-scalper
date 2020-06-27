@@ -44,7 +44,7 @@ class Trader {
         $this->symbol = $symbol;
         $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
         $scalpInfo = json_decode(json_encode($scalpInfo), true);
-        $this->stopLossInterval = intval($config['stopLossInterval'][$this->symbol]);
+        $this->stopLossInterval = intval($config['stopLoss'][$this->symbol]);
         $lastTicker = $scalpInfo['last'];
 
         if ($side == "Buy") {
@@ -90,7 +90,7 @@ class Trader {
         do {
             try {
                 $result = $this->bitmex->cancelAllOpenOrders($this->symbol);
-                sleep(1);
+                sleep(3);
             } catch (Exception $e) {
                 $this->log->error("Failed to sumbit", ['error'=>$e]);
                 break;
@@ -104,7 +104,7 @@ class Trader {
         do {
             try {
                 $result = $this->bitmex->editOrder($this->is_stop(), null, $amount, $stopPx);
-                sleep(1);
+                sleep(3);
             } catch (Exception $e) {
                 $this->log->error("Failed to sumbit", ['error'=>$e]);
                 break;
@@ -148,10 +148,15 @@ class Trader {
         $openPositions = unserialize(file_get_contents(self::OPEN_POSITIONS));
         foreach($openPositions as $pos) {
             if ($pos["symbol"] == $this->symbol) {
-                return True;
+                return $pos;
             }
         }
         return False;
+    }
+    public function are_open_orders() {
+        $openOrders = unserialize(file_get_contents($this->symbol.self::OPEN_ORDERS));
+        $return = empty($openOrders) ? False:True;
+        return $return;
     }
 
     public function is_stop() {
@@ -232,6 +237,7 @@ class Trader {
         }
         do {
             if (!$this->is_limit()) {
+                $this->log->info("No Limit orders found", ["limit"=>$this->is_limit()]);
                 $this->true_cancel_all_orders();
             }
             else {
@@ -243,15 +249,22 @@ class Trader {
             sleep(1);
 
         } while ($this->is_stop());
+        $this->log->info("Trade have finished removing trade File", []);
+        if ($this->are_open_orders()) {
+            $this->true_cancel_all_orders();
+        }
+        if ($this->are_open_positions()) {
+            $amount = $this->are_open_positions()['currentQty'];
+            $this->true_create_order("Market", null, -1*$amount, null);
+        }
+        sleep(2);
         if (microtime(true) - $this->startTime < $this->timeFrame*60) {
             $this->log->info("waiting the remaining of the timeframe to finish",['timeframe'=>$this->timeFrame]);
             do {
                 sleep(1);
             } while (microtime(true) - $this->startTime < $this->timeFrame*60);
         }
-        $this->log->info("Trade have finished removing trade File", []);
         shell_exec("rm ".$this->tradeFile);
-        $this->true_cancel_all_orders();
     }
 }
 $trader = New Trader($argv[1], $argv[2], $argv[3]);
