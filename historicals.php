@@ -2,6 +2,7 @@
 require __DIR__ . '/vendor/autoload.php';
 require_once("BitMex.php");
 $config = include('config.php');
+file_put_contents('conf.json', json_encode($config));
 require_once('log.php');
 
 
