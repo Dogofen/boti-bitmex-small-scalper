@@ -86,7 +86,7 @@ class Trader {
     }
     public function true_cancel_all_orders() {
         $result = False;
-        $this->log->info("cancelling all open orders.", []);
+        $this->log->info("cancelling all open orders.", ["limit orders"=>$this->is_limit()]);
         do {
             try {
                 $result = $this->bitmex->cancelAllOpenOrders($this->symbol);
@@ -96,6 +96,7 @@ class Trader {
                 break;
             }
         } while (!is_array($result));
+        $this->log->info("open orders canceled.", ["limit orders"=>$this->is_limit()]);
     }
 
      public function true_edit($orderId, $amount, $stopPx) {

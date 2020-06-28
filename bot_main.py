@@ -18,7 +18,7 @@ times  = sys.argv[3]
 counter = 0
 tradeFile = 'scalp_{}_{}'.format(side, symbol)
 print("looking for {} Trades of {} {}".format(times, side, symbol))
-while (counter <= int(times)):
+while (counter < int(times)):
     with open("{}{}".format(symbol, historicalFile)) as json_file:
         data = json.load(json_file)
     data.reverse()
@@ -43,5 +43,4 @@ while (counter <= int(times)):
         if side == "Sell" and not os.path.exists(tradeFile):
             os.system("php Trader.php {} Sell {} &".format(symbol, amount))
             counter = counter + 1
-
-        sleep(1)
+    sleep(1)
