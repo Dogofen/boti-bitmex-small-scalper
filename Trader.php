@@ -207,6 +207,16 @@ class Trader {
         shell_exec('touch '.$this->tradeFile);
         $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
         $percentage = 3;
+        $wallet = False;
+
+        try {
+            $wallet = $this->bitmex->getWallet();
+        }  catch (Exception $e) {
+            $this->log->error("Falied to et wallet.",[]);
+        }
+        $walletAmout = $wallet['amount'];
+        $this->log->info("wallet has ".$walletAmout." btc in it", ["wallet"=>$walletAmout]);
+
 
         $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
         $scalpInfo = json_decode(json_encode($scalpInfo), true);
@@ -259,6 +269,17 @@ class Trader {
             $this->true_create_order("Market", null, -1*$amount, null);
         }
         sleep(2);
+        try {
+            $wallet = $this->bitmex->getWallet();
+        }  catch (Exception $e) {
+            $this->log->error("Falied to et wallet.",[]);
+        }
+        $currentWalletAmout = $wallet['amount'];
+        $this->log->info("wallet has ".$currentWalletAmout." btc in it", ["previouswallet"=>$walletAmout]);
+        $res = ($currentWalletAmout-$walletAmout) < 0 ? "Loss":"Win";
+        $this->log->info("Trade made ".($currentWalletAmout-$walletAmout), ["result"=>$res]);
+
+
         if (microtime(true) - $this->startTime < $this->timeFrame*60) {
             $this->log->info("waiting the remaining of the timeframe to finish",['timeframe'=>$this->timeFrame]);
             do {
