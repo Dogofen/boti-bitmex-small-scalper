@@ -364,7 +364,7 @@ class BitMex {
   public function getWallet() {
 
     $data['method'] = "GET";
-    $data['function'] = "user/wallet";
+    $data['function'] = "user/walletSummary";
     $data['params'] = array(
       "currency" => "XBt"
     );

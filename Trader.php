@@ -214,7 +214,8 @@ class Trader {
         }  catch (Exception $e) {
             $this->log->error("Falied to et wallet.",[]);
         }
-        $walletAmout = $wallet['amount'];
+        $wallet = end($wallet);
+        $walletAmout = $wallet['walletBalance'];
         $this->log->info("wallet has ".$walletAmout." btc in it", ["wallet"=>$walletAmout]);
 
 
@@ -274,7 +275,8 @@ class Trader {
         }  catch (Exception $e) {
             $this->log->error("Falied to et wallet.",[]);
         }
-        $currentWalletAmout = $wallet['amount'];
+        $wallet = end($wallet);
+        $currentWalletAmout = $wallet['walletBalance'];
         $this->log->info("wallet has ".$currentWalletAmout." btc in it", ["previouswallet"=>$walletAmout]);
         $res = ($currentWalletAmout-$walletAmout) < 0 ? "Loss":"Win";
         $this->log->info("Trade made ".($currentWalletAmout-$walletAmout), ["result"=>$res]);
