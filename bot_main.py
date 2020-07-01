@@ -18,6 +18,8 @@ times  = sys.argv[3]
 counter = 0
 tradeFile = 'scalp_{}_{}'.format(side, symbol)
 print("looking for {} Trades of {} {}".format(times, side, symbol))
+os.system("php historicals.php &")
+os.system("php get_open_trades.php &")
 while (counter < int(times)):
     with open("{}{}".format(symbol, historicalFile)) as json_file:
         data = json.load(json_file)

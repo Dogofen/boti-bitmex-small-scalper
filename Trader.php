@@ -23,6 +23,7 @@ class Trader {
     private $tradeFile;
     private $timeFrame;
     private $startTime;
+    private $leap;
 
 
     public function __construct($symbol, $side, $amount) {
@@ -32,15 +33,12 @@ class Trader {
         }
         $this->startTime = microtime(true);
         $config = include('config.php');
+
         $this->bitmex = new BitMex($config['key'], $config['secret'], $config['testnet']);
         $this->timeFrame = $config['timeframe'];
+        $this->leap = $config['leap'][$symbol];
         $this->log = create_logger(getcwd().'/scalp.log');
         $this->priceRounds = $config['priceRounds'];
-        try {
-            $this->bitmex->setLeverage($config['leverage'], $this->symbol);
-        } catch (Exception $e) {
-            $this->log->error("Network failure to set leverage.", ["continue"=>True]);
-        }
         $this->symbol = $symbol;
         $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
         $scalpInfo = json_decode(json_encode($scalpInfo), true);
@@ -65,6 +63,9 @@ class Trader {
         $this->targets = array();
         $this->log->info("Finished Trade construction, proceeding",[]);
     }
+    public function __destruct() {
+    }
+
 
     public function is_buy() {
         return $this->side == 'Buy' ? 1:0;
@@ -224,8 +225,18 @@ class Trader {
         $lastCandle = $scalpInfo['last'];
         $emas = $scalpInfo['emas'];
         $this->targets = $emas;
+        $ticker = $this->get_ticker()['last'];
+        if ($this->side == "Buy" and $ticker <= $lastCandle['close']) {
+            $price = $ticker-$this->leap;
+        }
+        elseif ($this->side == "Sell" and $ticker >= $lastCandle['close']) {
+            $price = $ticker+$this->leap;
+        }
+        else {
+            $price = $lastCandle['close'];
+        }
 
-        if (!$this->true_create_order('Limit', $this->side, $this->amount, $lastCandle['close'])) {
+        if (!$this->true_create_order('Limit', $this->side, $this->amount, $price)) {
             shell_exec("rm ".$this->tradeFile);
             $this->log->error("Failed to create order", ['side'=>$this->side]);
             return;
