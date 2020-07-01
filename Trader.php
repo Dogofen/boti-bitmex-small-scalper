@@ -9,8 +9,6 @@ class Trader {
 
     const TICKER_PATH = '.ticker';
     const SCALP_PATH = '_scalp_info.json';
-    const OPEN_POSITIONS = 'openPositions.txt';
-    const OPEN_ORDERS = '_openOrders.txt';
     private $log;
     private $bitmex;
 
@@ -77,10 +75,12 @@ class Trader {
 
     public function get_ticker() {
         do {
-            $ticker = unserialize(file_get_contents(self::TICKER_PATH.$this->symbol.'.txt'));
-            if ($ticker['last'] == null) {
-                $this->log->error("ticker is error, retrying in 3 seconds", ['ticker'=>$ticker]);
-                sleep(3);
+            try {
+                sleep(1);
+                $ticker = $this->bitmex->getTicker($this->symbol);
+            } catch (Exception $e) {
+                $this->log->error("failed to sumbit", ['error'=>$e]);
+                sleep(2);
             }
         } while ($ticker['last'] == null);
         return $ticker;
@@ -117,7 +117,7 @@ class Trader {
 
 
     public function true_create_order($type, $side, $amount, $price, $stopPx = null) {
-        $this->log->info("Sending a Create Order command", ['side'=>$side.' '.$amount.' contracts']);
+        $this->log->info("Sending a Create Order command", ['side'=>$side.' '.$amount.' contracts, Price=>'.$price]);
         $order = False;
         do {
             try {
@@ -145,9 +145,22 @@ class Trader {
         } while (1);
         return $order;
     }
+    public function get_open_positions() {
+        $openPositions = null;
+        do {
+            try {
+                sleep(2);
+                $openPositions = $this->bitmex->getOpenPositions();
+            } catch (Exception $e) {
+                $this->log->error("failed to sumbit", ['error'=>$e]);
+                sleep(2);
+            }
+        } while (!is_array($openPositions));
+        return $openPositions;
+    }
 
     public function are_open_positions() {
-        $openPositions = unserialize(file_get_contents(self::OPEN_POSITIONS));
+        $openPositions = $this->get_open_positions();
         foreach($openPositions as $pos) {
             if ($pos["symbol"] == $this->symbol) {
                 return $pos;
@@ -155,14 +168,28 @@ class Trader {
         }
         return False;
     }
+    public function get_open_orders() {
+        $openOrders = null;
+        do {
+            try {
+                sleep(1);
+                $openOrders = $this->bitmex->getOpenOrders($this->symbol);
+            } catch (Exception $e) {
+                $this->log->error("failed to sumbit", ['error'=>$e]);
+                sleep(2);
+            }
+        } while (!is_array($openOrders));
+        return $openOrders;
+    }
+
     public function are_open_orders() {
-        $openOrders = unserialize(file_get_contents($this->symbol.self::OPEN_ORDERS));
-        $return = empty($openOrders) ? False:True;
+        $openOrders = $this->get_open_orders();
+        $return = empty($openOrders) ? False:$openOrders;
         return $return;
     }
 
     public function is_stop() {
-        $openOrders= unserialize(file_get_contents($this->symbol.self::OPEN_ORDERS));
+        $openOrders= $this->get_open_orders();
         foreach($openOrders as $order) {
             if ($order["ordType"] == "Stop") {
                 return $order["orderID"];
@@ -171,7 +198,10 @@ class Trader {
         return False;
     }
     public function is_limit() {
-        $openOrders = unserialize(file_get_contents($this->symbol.self::OPEN_ORDERS));
+        $openOrders = $this->get_open_orders();
+        if (!is_array($openOrders)) {
+            return False;
+        }
         foreach($openOrders as $order) {
             if ($order["ordType"] == "Limit") {
                 return True;
@@ -180,7 +210,7 @@ class Trader {
         return False;
     }
     public function sum_limit_orders() {
-        $openOrders = unserialize(file_get_contents($this->symbol.self::OPEN_ORDERS));
+        $openOrders= $this->get_open_orders();
         $sum = 0;
         foreach($openOrders as $order) {
             if ($order["ordType"] == "Limit") {
@@ -191,10 +221,11 @@ class Trader {
     }
 
     public function verify_limit_order() {
+        $this->log->info("verifying limit order to be accepted",[]);
         $start = microtime(true);
         do {
-            sleep(1);
-            if (date('i', microtime(true)-$start) > 1) {
+            sleep(2);
+            if (date('i', microtime(true)-$start) >= $this->timeFrame) {
                 return False;
             }
         } while(!$this->are_open_positions());
@@ -261,7 +292,7 @@ class Trader {
         do {
             if (!$this->is_limit()) {
                 $this->log->info("No Limit orders found", ["limit"=>$this->is_limit()]);
-                $this->true_cancel_all_orders();
+                break;
             }
             else {
                 if ($this->amount != $this->sum_limit_orders()) {
@@ -272,19 +303,14 @@ class Trader {
             sleep(1);
 
         } while ($this->is_stop());
-        $this->log->info("Trade have finished removing trade File", []);
         if ($this->are_open_orders()) {
             $this->true_cancel_all_orders();
-        }
-        if ($this->are_open_positions()) {
-            $amount = $this->are_open_positions()['currentQty'];
-            $this->true_create_order("Market", null, -1*$amount, null);
         }
         sleep(2);
         try {
             $wallet = $this->bitmex->getWallet();
         }  catch (Exception $e) {
-            $this->log->error("Falied to et wallet.",[]);
+            $this->log->error("Failed to get wallet.",[]);
         }
         $wallet = end($wallet);
         $currentWalletAmout = $wallet['walletBalance'];
@@ -299,6 +325,7 @@ class Trader {
                 sleep(1);
             } while (microtime(true) - $this->startTime < $this->timeFrame*60);
         }
+        $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
         shell_exec("rm ".$this->tradeFile);
     }
 }

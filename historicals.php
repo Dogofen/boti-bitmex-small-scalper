@@ -8,7 +8,7 @@ require_once('log.php');
 
 $logPath =  getcwd().'/boti.log';
 $log = create_logger($logPath);
-file_put_contents('historicals.pid',  serialize(getmypid()));
+file_put_contents('historicalsPid.json',  json_encode(getmypid()));
 
 $historicalFile ="_historical.json";
 $bitmex = new BitMex($config['key'],$config['secret'], $config['testnet']);

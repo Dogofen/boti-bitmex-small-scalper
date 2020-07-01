@@ -4,6 +4,8 @@ from time import sleep
 import os
 import sys
 
+os.system("php historicals.php &")
+sleep(2)
 with open('conf.json') as json_file:
     config = json.load(json_file)
 
@@ -18,8 +20,6 @@ times  = sys.argv[3]
 counter = 0
 tradeFile = 'scalp_{}_{}'.format(side, symbol)
 print("looking for {} Trades of {} {}".format(times, side, symbol))
-os.system("php historicals.php &")
-os.system("php get_open_trades.php &")
 while (counter < int(times)):
     with open("{}{}".format(symbol, historicalFile)) as json_file:
         data = json.load(json_file)
@@ -38,11 +38,21 @@ while (counter < int(times)):
     with open('{}{}'.format(symbol,outPutFile), 'w') as json_file:
         json.dump(scalp_info, json_file)
     if data[-1]['close'] < float(band_low.iloc[-1]) and abs(data[-1]['close'] - float(band_low.iloc[-1])) >= closeInterval[symbol]:
-        if side == "Buy" and not os.path.exists(tradeFile):
-            os.system("php Trader.php {} Buy {} &".format(symbol, amount))
-            counter = counter + 1
+        if side == "Buy" or side == "Both":
+            if not os.path.exists(tradeFile):
+                os.system("php Trader.php {} Buy {}".format(symbol, amount))
+                counter = counter + 1
     if data[-1]['close'] > float(band_high.iloc[-1]) and abs(float(band_high.iloc[-1]) - data[-1]['close']) >= closeInterval[symbol]:
-        if side == "Sell" and not os.path.exists(tradeFile):
-            os.system("php Trader.php {} Sell {} &".format(symbol, amount))
-            counter = counter + 1
+        if side == "Sell" or side == "Both":
+            if not os.path.exists(tradeFile):
+                os.system("php Trader.php {} Sell {}".format(symbol, amount))
+                counter = counter + 1
     sleep(1)
+
+with open('historicalsPid.json') as json_file:
+    pid = json.load(json_file)
+os.system("kill -9 {}".format(pid))
+
+
+
+
