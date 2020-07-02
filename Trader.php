@@ -15,6 +15,7 @@ class Trader {
     private $strategy = 'scalp';
     private $symbol;
     private $stopLossInterval;
+    private $marketStop;
     private $targets;
     private $amount;
     private $env;
@@ -44,10 +45,12 @@ class Trader {
         $lastTicker = $scalpInfo['last'];
 
         if ($side == "Buy") {
-            $this->stopLoss = array($lastTicker['low'] - $this->stopLossInterval, $lastTicker['close'], $lastTicker['close']);
+            $this->marketStop = $lastTicker['low'] -2*$this->stopLossInterval;
+            $this->stopLoss = array($lastTicker['close'] - $this->stopLossInterval, $lastTicker['close'] + $this->stopLossInterval/2);
         }
         else {
-           $this->stopLoss = array($lastTicker['high'] + $this->stopLossInterval, $lastTicker['close'], $lastTicker['close']);
+            $this->marketStop = $lastTicker['high'] + 2*$this->stopLossInterval;
+            $this->stopLoss = array($lastTicker['close'] + $this->stopLossInterval, $lastTicker['close'] - $this->stopLossInterval/2);
         }
         $this->side = $side;
         $this->amount = intval($amount);
@@ -225,12 +228,24 @@ class Trader {
         $start = microtime(true);
         do {
             sleep(2);
-            if (date('i', microtime(true)-$start) >= $this->timeFrame) {
+            if (date('i', microtime(true)-$start) >= 3*$this->timeFrame) {
                 return False;
             }
         } while(!$this->are_open_positions());
         return True;
     }
+     public function limitCloseOrElse() {
+         $ticker = False;
+         do {
+             $ticker = $this->get_ticker()['last'];
+             $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $ticker);
+             sleep(4);
+             if (!$this->are_open_positions()) {
+                 break;
+             }
+             sleep(2);
+         } while ($ticker < $this->marketStop and $this->side == "Sell" or $ticker > $this->marketStop and $this->side == "Buy");
+     }
 
     public function scalp_open_and_manage() {
         if (file_exists($this->tradeFile)) {
@@ -240,6 +255,7 @@ class Trader {
         $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
         $percentage = 3;
         $wallet = False;
+        $stop = $this->stopLoss[0];
 
         try {
             $wallet = $this->bitmex->getWallet();
@@ -282,7 +298,6 @@ class Trader {
 
         $this->log->info("Targets are: ", ['targets'=>$this->targets]);
         $this->log->info("stopLoss are", ['stopLoss'=>$this->stopLoss]);
-        $this->true_create_order('Stop', $this->get_opposite_trade_side(), $this->amount, null, $this->stopLoss[0]);
         sleep(2);
         foreach ($emas as $key=>$target) {
             $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->amount/$percentage), round($target, $this->priceRounds[$this->symbol]));
@@ -293,20 +308,23 @@ class Trader {
             if (!$this->is_limit()) {
                 $this->log->info("No Limit orders found", ["limit"=>$this->is_limit()]);
                 break;
-            }
-            else {
+            } else {
                 if ($this->amount != $this->sum_limit_orders()) {
                     $this->amount = $this->sum_limit_orders();
-                    $this->true_edit($this->is_stop(), $this->amount, $this->stopLoss[1]);
+                    $stop = $this->stopLoss[1];
                 }
             }
-            sleep(1);
+            sleep(2);
+            $ticker = $this->get_ticker()['last'];
+            if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
+                $this->true_cancel_all_orders();
+                sleep(2);
+                $this->limitCloseOrElse();
+                sleep(2);
+            }
+            sleep(2);
 
-        } while ($this->is_stop());
-        if ($this->are_open_orders()) {
-            $this->true_cancel_all_orders();
-        }
-        sleep(2);
+        } while ($this->is_limit());
         try {
             $wallet = $this->bitmex->getWallet();
         }  catch (Exception $e) {
