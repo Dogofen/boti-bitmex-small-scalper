@@ -50,5 +50,5 @@ do {
         $log->info("finished getting historicals.", ['errors'=>$errors]);
     }
     sleep(1);
-} while (strpos(shell_exec("ps -a|grep bot_main.py"), $symbol) !== false);
+} while (strpos(shell_exec("ps -x|grep bot_main.py"), $symbol) !== false);
 ?>

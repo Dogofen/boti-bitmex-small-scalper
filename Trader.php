@@ -262,6 +262,7 @@ class Trader {
         return True;
     }
      public function limitCloseOrElse() {
+         $this->log->info("Decided to limit close the position",[$this->stopLoss]);
          $ticker = False;
 
          $lastTicker = $this->get_ticker()['last'];
@@ -287,6 +288,7 @@ class Trader {
              }
              sleep(2);
          } while ($ticker < $this->marketStop and $this->side == "Sell" or $ticker > $this->marketStop and $this->side == "Buy");
+         $this->log->info("attemting Market order as limit was not filled",["marketStop"=>$this->marketStop]);
          $this->true_cancel_all_orders();
          sleep(2);
          $this->amount = $this->are_open_positions();
