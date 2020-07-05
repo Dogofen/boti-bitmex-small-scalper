@@ -48,12 +48,14 @@ class Trader {
         $lastTicker = $scalpInfo['last'];
 
         if ($side == "Buy") {
+            $this->log->info("Calculating Stop loss for Buy.", ['lastCandle'=>$lastTicker]);
             $this->marketStop = $lastTicker['low'] -2*$this->stopLossInterval;
-            $this->stopLoss = array($lastTicker['close'] - $this->stopLossInterval, $lastTicker['close'] + $this->stopLossInterval/2);
+            $this->stopLoss = array($lastTicker['low'] - $this->stopLossInterval, $lastTicker['close'] + $this->stopLossInterval/2);
         }
         else {
+            $this->log->info("Calculating Stop loss for Sell.", ['lastCandle'=>$lastTicker]);
             $this->marketStop = $lastTicker['high'] + 2*$this->stopLossInterval;
-            $this->stopLoss = array($lastTicker['close'] + $this->stopLossInterval, $lastTicker['close'] - $this->stopLossInterval/2);
+            $this->stopLoss = array($lastTicker['high'] + $this->stopLossInterval, $lastTicker['close'] - $this->stopLossInterval/2);
         }
         $this->side = $side;
         $this->amount = intval($amount);
