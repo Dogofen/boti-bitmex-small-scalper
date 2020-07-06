@@ -326,9 +326,19 @@ class Trader {
         $ticker = $this->get_ticker()['last'];
         if ($this->side == "Buy" and $ticker <= $lastCandle['close']) {
             $price = $this->get_limit_price();
+            if ($ticker <= $lastCandle['low']) {
+                $this->marketStop = $price -2*$this->stopLossInterval;
+                $this->stopLoss = array($price - $this->stopLossInterval, $price + $this->stopLossInterval/2);
+                $this->log->info("updating Stop loss as low price bigger than last price.",["stop => "=>$this->stopLoss, "marketStop => "=>$this->marketStop]);
+            }
         }
         elseif ($this->side == "Sell" and $ticker >= $lastCandle['close']) {
             $price = $this->get_limit_price();
+            if ($ticker >= $lastCandle['high']) {
+                $this->marketStop = $price + 2*$this->stopLossInterval;
+                $this->stopLoss = array($price + $this->stopLossInterval, $lastTicker['close'] - $this->stopLossInterval/2);
+                $this->log->info("updating Stop loss as high price smaller than last price",["stop => "=>$this->stopLoss, "marketStop => "=>$this->marketStop]);
+            }
         }
         else {
             $price = $lastCandle['close'];
