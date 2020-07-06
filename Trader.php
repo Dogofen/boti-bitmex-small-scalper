@@ -336,7 +336,7 @@ class Trader {
             $price = $this->get_limit_price();
             if ($ticker >= $lastCandle['high']) {
                 $this->marketStop = $price + 2*$this->stopLossInterval;
-                $this->stopLoss = array($price + $this->stopLossInterval, $lastTicker['close'] - $this->stopLossInterval/2);
+                $this->stopLoss = array($price + $this->stopLossInterval, $price - $this->stopLossInterval/2);
                 $this->log->info("updating Stop loss as high price smaller than last price",["stop => "=>$this->stopLoss, "marketStop => "=>$this->marketStop]);
             }
         }
