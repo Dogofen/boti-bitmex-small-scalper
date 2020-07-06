@@ -264,10 +264,10 @@ class Trader {
         return True;
     }
      public function limitCloseOrElse() {
-         $this->log->info("Decided to limit close the position",[$this->stopLoss]);
          $ticker = False;
 
          $lastTicker = $this->get_ticker()['last'];
+         $this->log->info("Decided to limit close the position",["ticker"=>$lastTicker]);
          $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $this->get_limit_price() + $this->leap);
          sleep(5);
          if (!$this->are_open_positions()) {
@@ -293,7 +293,7 @@ class Trader {
          $this->log->info("attemting Market order as limit was not filled",["marketStop"=>$this->marketStop]);
          $this->true_cancel_all_orders();
          sleep(2);
-         $this->amount = $this->are_open_positions();
+         $this->amount = $this->are_open_positions()['currentQty'];
          sleep(2);
          $this->true_create_order('Market', $this->get_opposite_trade_side(), $this->amount, null);
      }
@@ -362,12 +362,14 @@ class Trader {
             } else {
                 if ($this->amount != $this->sum_limit_orders()) {
                     $this->amount = $this->sum_limit_orders();
+                    $this->log->info("Limit order was filled, amount has updated", ["amount"=>$this->amount]);
                     $stop = $this->stopLoss[1];
                 }
             }
             sleep(2);
             $ticker = $this->get_ticker()['last'];
             if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
+                $this->log->info("closing the position",["ticker"=>$ticker]);
                 $this->true_cancel_all_orders();
                 sleep(2);
                 $this->limitCloseOrElse();
@@ -386,7 +388,7 @@ class Trader {
         $this->log->info("wallet has ".$currentWalletAmout." btc in it", ["previouswallet"=>$walletAmout]);
         $res = ($currentWalletAmout-$walletAmout) < 0 ? "Loss":"Win";
         $this->log->info("Trade made ".($currentWalletAmout-$walletAmout), ["result"=>$res]);
-
+        sleep(4);
 
         if (microtime(true) - $this->startTime < $this->timeFrame*60) {
             $this->log->info("waiting the remaining of the timeframe to finish",['timeframe'=>$this->timeFrame]);
@@ -394,8 +396,9 @@ class Trader {
                 sleep(1);
             } while (microtime(true) - $this->startTime < $this->timeFrame*60);
         }
-        $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
         shell_exec("rm ".$this->tradeFile);
+        $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
+        $this->log->info("Remaining open Trades or orders.", ['OpenPositions => '=>$this->are_open_positions(), "Orders => "=>$this->are_open_orders()]);
     }
     public function trade_open() {
         if (file_exists($this->tradeFile)) {
