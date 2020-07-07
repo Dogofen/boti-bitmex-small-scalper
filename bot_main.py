@@ -44,11 +44,13 @@ while (counter < int(times)):
             if not os.path.exists(tradeFile):
                 os.system("php CreateTrade.php {} Buy {} {} {}".format(symbol, amount, stopPx, strategy))
                 counter = counter + 1
+                print("number of executions is {}".format(counter))
     if data[-1]['close'] > float(band_high.iloc[-1]) and abs(float(band_high.iloc[-1]) - data[-1]['close']) >= closeInterval[symbol]:
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile):
                 os.system("php CreateTrade.php {} Sell {} {} {}".format(symbol, amount, stopPx, strategy))
                 counter = counter + 1
+                print("number of executions is {}".format(counter))
     sleep(1)
 
 with open('historicalsPid.json') as json_file:

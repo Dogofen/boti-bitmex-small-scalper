@@ -50,12 +50,12 @@ class Trader {
         if ($side == "Buy") {
             $this->log->info("Calculating Stop loss for Buy.", ['lastCandle'=>$lastTicker]);
             $this->marketStop = $lastTicker['low'] -2*$this->stopLossInterval;
-            $this->stopLoss = array($lastTicker['low'] - $this->stopLossInterval, $lastTicker['close'] + $this->stopLossInterval/2);
+            $this->stopLoss = array($lastTicker['low'] - $this->stopLossInterval, $lastTicker['close']);
         }
         else {
             $this->log->info("Calculating Stop loss for Sell.", ['lastCandle'=>$lastTicker]);
             $this->marketStop = $lastTicker['high'] + 2*$this->stopLossInterval;
-            $this->stopLoss = array($lastTicker['high'] + $this->stopLossInterval, $lastTicker['close'] - $this->stopLossInterval/2);
+            $this->stopLoss = array($lastTicker['high'] + $this->stopLossInterval, $lastTicker['close']);
         }
         $this->side = $side;
         $this->amount = intval($amount);
@@ -293,7 +293,7 @@ class Trader {
          $this->log->info("attemting Market order as limit was not filled",["marketStop"=>$this->marketStop]);
          $this->true_cancel_all_orders();
          sleep(2);
-         $this->amount = $this->are_open_positions()['currentQty'];
+         $this->amount = abs($this->are_open_positions()['currentQty']);
          sleep(2);
          $this->true_create_order('Market', $this->get_opposite_trade_side(), $this->amount, null);
      }
@@ -347,13 +347,13 @@ class Trader {
         if (!$this->true_create_order('Limit', $this->side, $this->amount, $price)) {
             shell_exec("rm ".$this->tradeFile);
             $this->log->error("Failed to create order", ['side'=>$this->side]);
-            return;
+            return False;
         }
         if (!$this->verify_limit_order()) {
             $this->log->error("limit order was not filled thus canceling",["timeframe"=>$this->timeFrame]);
             $this->true_cancel_all_orders();
             shell_exec('rm '.$this->tradeFile);
-            return;
+            return False;
         }
         $this->log->info("limit Order got filled",['fill'=>True]);
 
@@ -409,6 +409,7 @@ class Trader {
         shell_exec("rm ".$this->tradeFile);
         $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
         $this->log->info("Remaining open Trades or orders.", ['OpenPositions => '=>$this->are_open_positions(), "Orders => "=>$this->are_open_orders()]);
+        return True;
     }
     public function trade_open() {
         if (file_exists($this->tradeFile)) {
@@ -457,6 +458,7 @@ class Trader {
         }
         $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
         shell_exec("rm ".$this->tradeFile);
+        return True;
     }
 }
 
