@@ -204,10 +204,10 @@ class Trader {
         return $orderBook;
     }
 
-    public function get_limit_price() {
+    public function get_limit_price($side) {
         $orderBook = $this->get_order_book();
         foreach ($orderBook as $book) {
-            if ($book["side"] == $this->side) {
+            if ($book["side"] == $side) {
                 return $book['price'];
             }
         }
@@ -268,7 +268,7 @@ class Trader {
 
          $lastTicker = $this->get_ticker()['last'];
          $this->log->info("Decided to limit close the position",["ticker"=>$lastTicker]);
-         $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $this->get_limit_price() + $this->leap);
+         $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap);
          sleep(5);
          if (!$this->are_open_positions()) {
              return;
@@ -282,7 +282,7 @@ class Trader {
              $ticker = $this->get_ticker()['last'];
              if ($ticker < $lastTicker and $this->side == "Buy" or $ticker > $lastTicker and $this->side == "Sell") {
                  $lastTicker = $ticker;
-                 $this->true_edit($order["orderID"], $this->get_limit_price() + $this->leap, null, null);
+                 $this->true_edit($order["orderID"], $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap, null, null);
              }
              sleep(15);
              if (!$this->are_open_positions()) {
@@ -325,7 +325,7 @@ class Trader {
         $this->targets = $emas;
         $ticker = $this->get_ticker()['last'];
         if ($this->side == "Buy" and $ticker <= $lastCandle['close']) {
-            $price = $this->get_limit_price();
+            $price = $this->get_limit_price($this->side);
             if ($ticker <= $lastCandle['low']) {
                 $this->marketStop = $price -2*$this->stopLossInterval;
                 $this->stopLoss = array($price - $this->stopLossInterval, $price + $this->stopLossInterval/2);
@@ -333,7 +333,7 @@ class Trader {
             }
         }
         elseif ($this->side == "Sell" and $ticker >= $lastCandle['close']) {
-            $price = $this->get_limit_price();
+            $price = $this->get_limit_price($this->side);
             if ($ticker >= $lastCandle['high']) {
                 $this->marketStop = $price + 2*$this->stopLossInterval;
                 $this->stopLoss = array($price + $this->stopLossInterval, $price - $this->stopLossInterval/2);
@@ -362,7 +362,7 @@ class Trader {
         sleep(2);
         foreach ($emas as $key=>$target) {
             $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->amount/$percentage), round($target, $this->priceRounds[$this->symbol]));
-            $this->targets[$key] = $order['orderID'];
+            $this->targets[$key] = array($order['orderID'], round($target, $this->priceRounds[$this->symbol]));
             sleep(5);
         }
         do {
@@ -386,7 +386,25 @@ class Trader {
                 sleep(2);
             }
             sleep(2);
-
+            $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
+            $scalpInfo = json_decode(json_encode($scalpInfo), true);
+            $emas = $scalpInfo['emas'];
+            foreach ($emas as $key=>$target) {
+                $target = round($target, $this->priceRounds[$this->symbol]);
+                if ($target != $this->targets[$key][1]) {
+                    $this->log->info("Updating ".$key." as it has changed",[$target]);
+                    $ticker = $this->get_ticker()['last'];
+                    sleep(2);
+                    $price = $target;
+                    if ($ticker < $target and $this->side == "Sell" or $ticker > $target and $this->side == "Buy") {
+                        $this->log->info("Traget price below or above ticker.",[$ticker]);
+                        $price = $this->get_limit_price($this->get_opposite_trade_side());
+                    }
+                    $this->true_edit($this->targets[$key][0], $price, null, null);
+                    $this->targets[$key][1] = $target;
+                    sleep(2);
+                }
+            }
         } while ($this->is_limit());
         try {
             $wallet = $this->bitmex->getWallet();
