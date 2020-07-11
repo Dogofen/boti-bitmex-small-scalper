@@ -42,15 +42,17 @@ while (counter < int(times)):
     if data[-1]['close'] < float(band_low.iloc[-1]) and abs(data[-1]['close'] - float(band_low.iloc[-1])) >= closeInterval[symbol]:
         if side == "Buy" or side == "Both":
             if not os.path.exists(tradeFile):
-                os.system("php CreateTrade.php {} Buy {} {} {}".format(symbol, amount, stopPx, strategy))
+                os.system("php CreateTrade.php {} Buy {} {} {} &".format(symbol, amount, stopPx, strategy))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
+                sleep(5)
     if data[-1]['close'] > float(band_high.iloc[-1]) and abs(float(band_high.iloc[-1]) - data[-1]['close']) >= closeInterval[symbol]:
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile):
-                os.system("php CreateTrade.php {} Sell {} {} {}".format(symbol, amount, stopPx, strategy))
+                os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
+                sleep(5)
     sleep(1)
 
 with open('historicalsPid.json') as json_file:
