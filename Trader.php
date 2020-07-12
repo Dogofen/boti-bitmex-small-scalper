@@ -190,6 +190,24 @@ class Trader {
         return $openOrders;
     }
 
+    public function get_open_order_by_id($id) {
+        $openOrders = null;
+        do {
+            try {
+                sleep(1);
+                $openOrders = $this->bitmex->getOpenOrders($this->symbol);
+            } catch (Exception $e) {
+                $this->log->error("failed to sumbit", ['error'=>$e]);
+                sleep(2);
+            }
+        } while (!is_array($openOrders));
+        foreach($openOrders as $order) {
+            if($order["orderID"] == $id) {
+                return $order;
+            }
+        }
+        return False;
+    }
     public function get_order_book() {
         $orderBook = null;
         do {
@@ -379,10 +397,17 @@ class Trader {
             sleep(2);
             $ticker = $this->get_ticker()['last'];
             if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
-                $this->log->info("closing the position",["ticker"=>$ticker]);
+                $this->log->info("closing the position as it reached threshold.",["ticker"=>$ticker]);
                 $this->true_cancel_all_orders();
                 sleep(2);
-                $this->limitCloseOrElse();
+                $this->amount = abs($this->are_open_positions()['currentQty']);
+                sleep(2);
+                if ($this->amount != 0) {
+                    $this->limitCloseOrElse();
+                } else {
+                    $this->log->info("position is already closed exiting",["amount"=>$this->amount]);
+                    break;
+                }
                 sleep(2);
             }
             sleep(2);
@@ -390,6 +415,9 @@ class Trader {
             $scalpInfo = json_decode(json_encode($scalpInfo), true);
             $emas = $scalpInfo['emas'];
             foreach ($emas as $key=>$target) {
+                if (!$this->get_open_order_by_id($this->targets[$key][0])) {
+                    continue;
+                }
                 $target = round($target, $this->priceRounds[$this->symbol]);
                 if ($target != $this->targets[$key][1]) {
                     $this->log->info("Updating ".$key." as it has changed",[$target]);
