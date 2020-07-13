@@ -32,6 +32,7 @@ class Trader {
             return;
         }
         $this->startTime = microtime(true);
+        $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
         $config = include('config.php');
 
         $this->bitmex = new BitMex($config['key'], $config['secret'], $config['testnet']);
@@ -70,6 +71,11 @@ class Trader {
         $this->log->info("Finished Trade construction, proceeding",[]);
     }
     public function __destruct() {
+        $this->log->info("Remaining open Trades or orders.", ['OpenPositions => '=>$this->are_open_positions(), "Orders => "=>$this->are_open_orders()]);
+        sleep(2);
+        shell_exec("rm ".$this->tradeFile);
+        $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
+        $this->log->info('---------------------------------- End !!!!! ----------------------------------', ['Sepparator'=>'---']);
     }
 
 
@@ -321,10 +327,8 @@ class Trader {
             return false;
         }
         shell_exec('touch '.$this->tradeFile);
-        $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
         $percentage = 3;
         $wallet = False;
-        $stop = $this->stopLoss[0];
 
         try {
             $wallet = $this->bitmex->getWallet();
@@ -377,6 +381,7 @@ class Trader {
 
         $this->log->info("Targets are: ", ['targets'=>$this->targets]);
         $this->log->info("stopLoss are", ['stopLoss'=>$this->stopLoss]);
+        $stop = $this->stopLoss[0];
         sleep(2);
         foreach ($emas as $key=>$target) {
             $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->amount/$percentage), round($target, $this->priceRounds[$this->symbol]));
@@ -397,7 +402,7 @@ class Trader {
             sleep(2);
             $ticker = $this->get_ticker()['last'];
             if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
-                $this->log->info("closing the position as it reached threshold.",["ticker"=>$ticker]);
+                $this->log->info("closing the position as it reached threshold stop:".$stop,["ticker"=>$ticker]);
                 $this->true_cancel_all_orders();
                 sleep(2);
                 $this->amount = abs($this->are_open_positions()['currentQty']);
@@ -452,9 +457,6 @@ class Trader {
                 sleep(1);
             } while (microtime(true) - $this->startTime < $this->timeFrame*60);
         }
-        shell_exec("rm ".$this->tradeFile);
-        $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
-        $this->log->info("Remaining open Trades or orders.", ['OpenPositions => '=>$this->are_open_positions(), "Orders => "=>$this->are_open_orders()]);
         return True;
     }
     public function trade_open() {
