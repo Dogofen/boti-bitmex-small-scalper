@@ -32,7 +32,6 @@ class Trader {
             return;
         }
         $this->startTime = microtime(true);
-        $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
         $config = include('config.php');
 
         $this->bitmex = new BitMex($config['key'], $config['secret'], $config['testnet']);
@@ -40,6 +39,7 @@ class Trader {
         $this->leap = $config['leap'][$symbol];
         $this->leap = $side == "Sell" ? -1 * $this->leap:$this->leap;
         $this->log = create_logger(getcwd().'/scalp.log');
+        $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
         $this->priceRounds = $config['priceRounds'];
         $this->symbol = $symbol;
         $this->stopPx = $stopPx;
@@ -350,7 +350,7 @@ class Trader {
             $price = $this->get_limit_price($this->side);
             if ($ticker <= $lastCandle['low']) {
                 $this->marketStop = $price -2*$this->stopLossInterval;
-                $this->stopLoss = array($price - $this->stopLossInterval, $price + $this->stopLossInterval/2);
+                $this->stopLoss = array($price - $this->stopLossInterval, $price);
                 $this->log->info("updating Stop loss as low price bigger than last price.",["stop => "=>$this->stopLoss, "marketStop => "=>$this->marketStop]);
             }
         }
@@ -358,7 +358,7 @@ class Trader {
             $price = $this->get_limit_price($this->side);
             if ($ticker >= $lastCandle['high']) {
                 $this->marketStop = $price + 2*$this->stopLossInterval;
-                $this->stopLoss = array($price + $this->stopLossInterval, $price - $this->stopLossInterval/2);
+                $this->stopLoss = array($price + $this->stopLossInterval, $price);
                 $this->log->info("updating Stop loss as high price smaller than last price",["stop => "=>$this->stopLoss, "marketStop => "=>$this->marketStop]);
             }
         }
