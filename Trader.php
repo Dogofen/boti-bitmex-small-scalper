@@ -27,7 +27,7 @@ class Trader {
 
 
     public function __construct($symbol, $side, $amount, $stopPx = null) {
-        $this->tradeFile = $this->strategy."_".$side.'_'.$symbol;
+        $this->tradeFile = $this->strategy."_".$symbol;
         if (file_exists($this->tradeFile)) {
             return;
         }
@@ -505,7 +505,6 @@ class Trader {
             } while (microtime(true) - $this->startTime < $this->timeFrame*60);
         }
         $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
-        shell_exec("rm ".$this->tradeFile);
         return True;
     }
 }
