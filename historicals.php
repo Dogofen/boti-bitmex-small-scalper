@@ -25,7 +25,8 @@ do {
     $errors=0;
     $time = microtime(true);
     $minutes = date('i', $time);
-    if($minutes%$timeFrame == 0) {
+    $seconds = date('s', $time);
+    if($minutes%$timeFrame == 0 and $seconds == 0) {
         foreach($symbols as $symbol) {
             do {
                 try {
@@ -46,9 +47,7 @@ do {
             $result[$symbol] = $res;
             file_put_contents($symbol.$historicalFile,  json_encode($result[$symbol]));
         }
-        sleep(10*$timeFrame);
         $log->info("finished getting historicals.", ['errors'=>$errors]);
     }
-    sleep(1);
 } while (strpos(shell_exec("ps -x|grep bot_main.py"), $symbol) !== false);
 ?>

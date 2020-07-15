@@ -13,13 +13,13 @@ amount = config['amount']
 closeInterval = config['closeInterval']
 historicalFile ="_historical.json";
 outPutFile = "_scalp_info.json"
-tradeFile = 'scalp_{}'.format(symbol)
 
 symbol = sys.argv[1]
 side   = sys.argv[2]
 times  = sys.argv[3]
 stopPx = sys.argv[4]
 strategy = sys.argv[5]
+tradeFile = 'scalp_{}'.format(symbol)
 counter = 0
 print("looking for {} Trades of {} {}".format(times, side, symbol))
 while (counter < int(times)):

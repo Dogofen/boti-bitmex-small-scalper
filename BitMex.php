@@ -102,7 +102,7 @@ class BitMex {
       "symbol" => $symbol,
       "count" => $count,
       "binSize" => $timeFrame,
-      "partial" => "false",
+      "partial" => "true",
       "reverse" => $reverse
     );
 
