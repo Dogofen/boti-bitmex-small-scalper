@@ -39,14 +39,14 @@ while (counter < int(times)):
     scalp_info = {'emas': emas, 'bands': [float(band_low.iloc[-1]), float(band_high.iloc[-1])], 'last': data[-1]}
     with open('{}{}'.format(symbol,outPutFile), 'w') as json_file:
         json.dump(scalp_info, json_file)
-    if data[-1]['close'] < float(band_low.iloc[-1]) and abs(data[-1]['close'] - float(band_low.iloc[-1])) >= closeInterval[symbol]:
+    if  float(band_low.iloc[-1]) - float(data[-1]['close']) >= closeInterval[symbol]:
         if side == "Buy" or side == "Both":
             if not os.path.exists(tradeFile):
                 os.system("php CreateTrade.php {} Buy {} {} {} &".format(symbol, amount, stopPx, strategy))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
                 sleep(5)
-    if data[-1]['close'] > float(band_high.iloc[-1]) and abs(float(band_high.iloc[-1]) - data[-1]['close']) >= closeInterval[symbol]:
+    if float(data[-1]['close']) - float(band_high.iloc[-1]) >= closeInterval[symbol]:
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile):
                 os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))

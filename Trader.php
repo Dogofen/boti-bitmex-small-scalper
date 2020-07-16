@@ -374,7 +374,6 @@ class Trader {
         if (!$this->verify_limit_order()) {
             $this->log->error("limit order was not filled thus canceling",["timeframe"=>$this->timeFrame]);
             $this->true_cancel_all_orders();
-            shell_exec('rm '.$this->tradeFile);
             return False;
         }
         $this->log->info("limit Order got filled",['fill'=>True]);
