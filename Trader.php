@@ -395,7 +395,14 @@ class Trader {
                 if ($this->amount != $this->sum_limit_orders()) {
                     $this->amount = $this->sum_limit_orders();
                     $this->log->info("Limit order was filled, amount has updated", ["amount"=>$this->amount]);
-                    $stop = $this->stopLoss[1];
+                    sleep(2);
+                    $ticker = $this->get_ticker()['last'];
+                    if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
+                        $this->log->info("cannot change stop point as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
+                    } else {
+                        $this->log->info("stop point has changed", ["new Stop=>"=>$stop]);
+                        $stop = $this->stopLoss[1];
+                    }
                 }
             }
             sleep(2);

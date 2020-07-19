@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import datetime
 from time import sleep
 import os
 import sys
@@ -11,6 +12,7 @@ with open('conf.json') as json_file:
 
 amount = config['amount']
 closeInterval = config['closeInterval']
+timeFrame = config['timeframe']
 historicalFile ="_historical.json";
 outPutFile = "_scalp_info.json"
 
@@ -41,14 +43,14 @@ while (counter < int(times)):
         json.dump(scalp_info, json_file)
     if  float(band_low.iloc[-1]) - float(data[-1]['close']) >= closeInterval[symbol]:
         if side == "Buy" or side == "Both":
-            if not os.path.exists(tradeFile):
+            if not os.path.exists(tradeFile) and datetime.datetime.now().minutes%timeFrame == 0:
                 os.system("php CreateTrade.php {} Buy {} {} {} &".format(symbol, amount, stopPx, strategy))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
                 sleep(5)
     if float(data[-1]['close']) - float(band_high.iloc[-1]) >= closeInterval[symbol]:
         if side == "Sell" or side == "Both":
-            if not os.path.exists(tradeFile):
+            if not os.path.exists(tradeFile) and datetime.datetime.now().minutes%timeFrame == 0:
                 os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
