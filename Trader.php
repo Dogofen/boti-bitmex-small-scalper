@@ -18,12 +18,14 @@ class Trader {
     public $marketStop;
     private $targets;
     private $amount;
+    private $initialAmount;
     private $env;
     private $tradeFile;
     private $timeFrame;
     private $startTime;
     private $leap;
     private $stopPx;
+    private $maxCompunds;
 
 
     public function __construct($symbol, $side, $amount, $stopPx = null) {
@@ -37,6 +39,7 @@ class Trader {
         $this->bitmex = new BitMex($config['key'], $config['secret'], $config['testnet']);
         $this->timeFrame = $config['timeframe'];
         $this->leap = $config['leap'][$symbol];
+        $this->maxCompunds = $config['maxCompunds'];
         $this->leap = $side == "Sell" ? -1 * $this->leap:$this->leap;
         $this->log = create_logger(getcwd().'/scalp.log');
         $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
@@ -59,7 +62,7 @@ class Trader {
             $this->stopLoss = array($lastTicker['high'] + $this->stopLossInterval, $lastTicker['close']);
         }
         $this->side = $side;
-        $this->amount = intval($amount);
+        $this->initialAmount = intval($amount);
 
         if ($config['testnet']) {
             $this->env = 'test';
@@ -93,7 +96,7 @@ class Trader {
                 sleep(1);
                 $ticker = $this->bitmex->getTicker($this->symbol);
             } catch (Exception $e) {
-                $this->log->error("failed to sumbit", ['error'=>$e]);
+                $this->log->error("failed to submit", ['error'=>$e]);
                 sleep(2);
             }
         } while ($ticker['last'] == null);
@@ -107,7 +110,7 @@ class Trader {
                 $result = $this->bitmex->cancelAllOpenOrders($this->symbol);
                 sleep(3);
             } catch (Exception $e) {
-                $this->log->error("Failed to sumbit", ['error'=>$e]);
+                $this->log->error("Failed to submit", ['error'=>$e]);
                 break;
             }
         } while (!is_array($result));
@@ -122,7 +125,7 @@ class Trader {
                 $result = $this->bitmex->editOrder($orderId, $price, $amount, $stopPx);
                 sleep(3);
             } catch (Exception $e) {
-                $this->log->error("Failed to sumbit", ['error'=>$e]);
+                $this->log->error("Failed to submit", ['error'=>$e]);
                 break;
             }
 
@@ -138,15 +141,15 @@ class Trader {
                 $order = $this->bitmex->createOrder($this->symbol, $type, $side, $price, $amount, $stopPx);
             } catch (Exception $e) {
                 if (strpos($e, 'Invalid orderQty') !== false) {
-                    $this->log->error("Failed to sumbit, Invalid quantity", ['error'=>$e]);
+                    $this->log->error("Failed to submit, Invalid quantity", ['error'=>$e]);
                     return false;
                 }
                 if (strpos($e, 'insufficient Available Balance') !== false) {
-                    $this->log->error("Failed to sumbit, insufficient Available Balance", ['error'=>$e]);
+                    $this->log->error("Failed to submit, insufficient Available Balance", ['error'=>$e]);
                     return false;
                 }
                 if (strpos($e, 'Invalid API Key') !== false) {
-                    $this->log->error("Failed to sumbit, Invalid API Key", ['error'=>$e]);
+                    $this->log->error("Failed to submit, Invalid API Key", ['error'=>$e]);
                     return false;
                 }
                 $this->log->error("Failed to create/close position retrying in 3 seconds", ['error'=>$e]);
@@ -166,7 +169,7 @@ class Trader {
                 sleep(2);
                 $openPositions = $this->bitmex->getOpenPositions();
             } catch (Exception $e) {
-                $this->log->error("failed to sumbit", ['error'=>$e]);
+                $this->log->error("failed to submit", ['error'=>$e]);
                 sleep(2);
             }
         } while (!is_array($openPositions));
@@ -189,7 +192,7 @@ class Trader {
                 sleep(1);
                 $openOrders = $this->bitmex->getOpenOrders($this->symbol);
             } catch (Exception $e) {
-                $this->log->error("failed to sumbit", ['error'=>$e]);
+                $this->log->error("failed to submit", ['error'=>$e]);
                 sleep(2);
             }
         } while (!is_array($openOrders));
@@ -203,7 +206,7 @@ class Trader {
                 sleep(1);
                 $openOrders = $this->bitmex->getOpenOrders($this->symbol);
             } catch (Exception $e) {
-                $this->log->error("failed to sumbit", ['error'=>$e]);
+                $this->log->error("failed to submit", ['error'=>$e]);
                 sleep(2);
             }
         } while (!is_array($openOrders));
@@ -221,7 +224,7 @@ class Trader {
                 sleep(1);
                 $orderBook = $this->bitmex->getOrderBook(1, $this->symbol);
             } catch (Exception $e) {
-                $this->log->error("failed to sumbit", ['error'=>$e]);
+                $this->log->error("failed to submit", ['error'=>$e]);
                 sleep(2);
             }
         } while (!is_array($orderBook));
@@ -265,15 +268,15 @@ class Trader {
         }
         return False;
     }
-    public function sum_limit_orders() {
+    public function num_of_closing_orders() {
         $openOrders= $this->get_open_orders();
-        $sum = 0;
+        $num = 0;
         foreach($openOrders as $order) {
-            if ($order["ordType"] == "Limit") {
-                $sum += $order["orderQty"];
+            if ($order["ordType"] == "Limit" and $order["side"] == $this->get_opposite_trade_side()) {
+                $num += 1;
             }
         }
-        return $sum;
+        return $num;
     }
 
     public function verify_limit_order() {
@@ -327,8 +330,10 @@ class Trader {
             return false;
         }
         shell_exec('touch '.$this->tradeFile);
-        $percentage = 3;
         $wallet = False;
+        $numOfLimitOrders = 3;
+        $compoundVisit = False;
+        $stopCounter = 0;
 
         try {
             $wallet = $this->bitmex->getWallet();
@@ -366,7 +371,7 @@ class Trader {
             $price = $lastCandle['close'];
         }
 
-        if (!$this->true_create_order('Limit', $this->side, $this->amount, $price)) {
+        if (!$this->true_create_order('Limit', $this->side, $this->initialAmount, $price)) {
             shell_exec("rm ".$this->tradeFile);
             $this->log->error("Failed to create order", ['side'=>$this->side]);
             return False;
@@ -380,46 +385,58 @@ class Trader {
 
         $this->log->info("Targets are: ", ['targets'=>$this->targets]);
         $this->log->info("stopLoss are", ['stopLoss'=>$this->stopLoss]);
-        $stop = $this->stopLoss[0];
+        $stop = $this->stopLoss[$stopCounter];
         sleep(2);
         foreach ($emas as $key=>$target) {
-            $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->amount/$percentage), round($target, $this->priceRounds[$this->symbol]));
+            $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->initialAmount/$numOfLimitOrders), round($target, $this->priceRounds[$this->symbol]));
             $this->targets[$key] = array($order['orderID'], round($target, $this->priceRounds[$this->symbol]));
             sleep(5);
         }
+        $this->amount = abs($this->are_open_positions()['currentQty']);//amount gets updated for the first time.
+        sleep(2);
         do {
-            if (!$this->is_limit()) {
+            if (!$this->is_limit()) { // does the function need to close?
                 $this->log->info("No Limit orders found", ["limit"=>$this->is_limit()]);
                 break;
             } else {
-                if ($this->amount != $this->sum_limit_orders()) {
-                    $this->amount = $this->sum_limit_orders();
-                    $this->log->info("Limit order was filled, amount has updated", ["amount"=>$this->amount]);
+                if ($numOfLimitOrders > $this->num_of_closing_orders()) { // This checks if a stopLoss point needs to be changed.
+                    $numOfLimitOrders = $this->num_of_closing_orders();
                     sleep(2);
                     $ticker = $this->get_ticker()['last'];
+                    $this->log->info("Limit order was filled.", ["current ticker"=>$ticker]);
                     if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
                         $this->log->info("cannot change stop point as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
                     } else {
-                        $this->log->info("stop point has changed", ["new Stop=>"=>$stop]);
-                        $stop = $this->stopLoss[1];
+                        $stopCounter = 1;
+                        $stop = $this->stopLoss[$stopCounter];
+                        $this->log->info("stop point has changed", ["new Stop"=>$stop]);
                     }
                 }
             }
             sleep(2);
             $ticker = $this->get_ticker()['last'];
             if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
-                $this->log->info("closing the position as it reached threshold stop:".$stop,["ticker"=>$ticker]);
-                $this->true_cancel_all_orders();
-                sleep(2);
-                $this->amount = abs($this->are_open_positions()['currentQty']);
-                sleep(2);
-                if ($this->amount != 0) {
-                    $this->limitCloseOrElse();
-                } else {
-                    $this->log->info("position is already closed exiting",["amount"=>$this->amount]);
-                    break;
+                if ($this->maxCompunds == 0 or $stopCounter == 1) {
+                    $this->log->info("closing the position as it reached threshold stop:".$stop,["ticker"=>$ticker]);
+                    $this->true_cancel_all_orders();
+                    sleep(2);
+                    $this->amount = abs($this->are_open_positions()['currentQty']);
+                    sleep(2);
+                    if ($this->amount != 0) {
+                        $this->limitCloseOrElse();
+                    } else {
+                        $this->log->info("position is already closed exiting",["amount"=>$this->amount]);
+                        break;
+                    }
+                    sleep(2);
                 }
-                sleep(2);
+                elseif ($compoundVisit == False and $stopCounter == 0) {
+                    $this->log->info("position will compound now as it reached threshold stop:".$stop,["ticker"=>$ticker]);
+                    $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->get_limit_price($this->side) + $this->leap);
+                    $this->maxCompunds -= 1;
+                    $compoundVisit = True;
+                    sleep(2);
+                }
             }
             sleep(2);
             $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
@@ -444,7 +461,44 @@ class Trader {
                     sleep(2);
                 }
             }
-        } while ($this->is_limit());
+            $position = $this->are_open_positions();
+            $newAmount = abs($position['currentQty']);
+            sleep(2);
+            if ($newAmount < $this->amount) {
+                $this->amount = $newAmount;
+            }
+            elseif ($newAmount > $this->amount) {
+                $this->amount = $newAmount;
+                $this->log->info("compound was succesfull, updating the targets and stopLoss.", ["newAmount"=>$newAmount]);
+                $price = $position["avgEntryPrice"];
+                if ($this->side == "Buy") {
+                    $this->marketStop = $price -2*$this->stopLossInterval;
+                    $this->stopLoss = array($price - $this->stopLossInterval, $price);
+                }
+                elseif ($this->side == "Sell") {
+                    $this->marketStop = $price +2*$this->stopLossInterval;
+                    $this->stopLoss = array($price + $this->stopLossInterval, $price);
+                }
+                $this->log->info("new stopLoss are", ['stopLoss'=>$this->stopLoss]);
+                $stop = $this->stopLoss[0];
+                $newAmount = intval($this->amount/$numOfLimitOrders);
+                foreach ($this->targets as $target) {
+                    $this->log->info("Updating target as it has changed.",["new Amount"=>$newAmount]);
+                    $this->true_edit($target[0], null, $newAmount, null);
+                    sleep(2);
+                }
+                $compoundVisit = False;
+            } else {
+                continue;
+            }
+        } while ($this->amount != 0);
+        if ($this->is_limit()) { // is there more limits as result of compound.
+            $this->log->info("more limit orders were found as a result of compound, canceling them.", ["limit"=>$this->is_limit()]);
+            sleep(1);
+            $this->true_cancel_all_orders();
+            sleep(2);
+        }
+
         try {
             $wallet = $this->bitmex->getWallet();
         }  catch (Exception $e) {
@@ -457,11 +511,11 @@ class Trader {
         $this->log->info("Trade made ".($currentWalletAmout-$walletAmout), ["result"=>$res]);
         sleep(4);
 
-        if (microtime(true) - $this->startTime < $this->timeFrame*60) {
+        if (microtime(true) - $this->startTime < 60) {
             $this->log->info("waiting the remaining of the timeframe to finish",['timeframe'=>$this->timeFrame]);
             do {
                 sleep(1);
-            } while (microtime(true) - $this->startTime < $this->timeFrame*60);
+            } while (microtime(true) - $this->startTime < 60);
         }
         return True;
     }
