@@ -471,13 +471,14 @@ class Trader {
                 $this->amount = $newAmount;
                 $this->log->info("compound was succesfull, updating the targets and stopLoss.", ["newAmount"=>$newAmount]);
                 $price = $position["avgEntryPrice"];
+                $lastPrice = $position["lastPrice"];
                 if ($this->side == "Buy") {
-                    $this->marketStop = $price -2*$this->stopLossInterval;
-                    $this->stopLoss = array($price - $this->stopLossInterval, $price);
+                    $this->marketStop = $lastPrice -2*$this->stopLossInterval;
+                    $this->stopLoss = array($lastPrice - $this->stopLossInterval, $price);
                 }
                 elseif ($this->side == "Sell") {
-                    $this->marketStop = $price +2*$this->stopLossInterval;
-                    $this->stopLoss = array($price + $this->stopLossInterval, $price);
+                    $this->marketStop = $lastPrice +2*$this->stopLossInterval;
+                    $this->stopLoss = array($lastPrice + $this->stopLossInterval, $price);
                 }
                 $this->log->info("new stopLoss are", ['stopLoss'=>$this->stopLoss]);
                 $stop = $this->stopLoss[0];
