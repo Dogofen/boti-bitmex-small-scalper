@@ -404,12 +404,14 @@ class Trader {
                     sleep(2);
                     $ticker = $this->get_ticker()['last'];
                     $this->log->info("Limit order was filled.", ["current ticker"=>$ticker]);
-                    if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
-                        $this->log->info("cannot change stop point as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
-                    } else {
-                        $stopCounter = 1;
-                        $stop = $this->stopLoss[$stopCounter];
-                        $this->log->info("stop point has changed", ["new Stop"=>$stop]);
+                    if ($stopCounter == 0) {
+                        if ($ticker > $this->stopLoss[1] and $this->side == "Sell" or $ticker < $this->stopLoss[1] and $this->side == "Buy") {
+                            $this->log->info("cannot change stop point to ".$this->stopLoss[1]." as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
+                        } else {
+                            $stopCounter = 1;
+                            $stop = $this->stopLoss[$stopCounter];
+                            $this->log->info("stop point has changed", ["new Stop"=>$stop]);
+                        }
                     }
                 }
             }
