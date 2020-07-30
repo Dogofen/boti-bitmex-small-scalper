@@ -418,7 +418,7 @@ class Trader {
             sleep(2);
             $ticker = $this->get_ticker()['last'];
             if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
-                if ($this->maxCompunds == 0 or $stopCounter == 1) {
+                if ($this->maxCompunds == 0 and $numOfLimitOrders != 3 or $stopCounter == 1) {
                     $this->log->info("closing the position as it reached threshold stop:".$stop,["ticker"=>$ticker]);
                     $this->true_cancel_all_orders();
                     sleep(2);

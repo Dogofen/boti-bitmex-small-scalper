@@ -57,9 +57,30 @@ while (counter < int(times)):
                 sleep(5)
     sleep(1)
 
+while (os.path.exists(tradeFile)):
+    print("continuting until last trade is over")
+    with open("{}{}".format(symbol, historicalFile)) as json_file:
+        data = json.load(json_file)
+    data.reverse()
+    data_dict = {'timestamp': [d['timestamp'] for d in data], 'close': [d['close'] for d in data]}
+    df = pd.DataFrame(data_dict, columns=['timestamp','close'])
+    ema20 = df.rolling(20).mean()
+    ema8 = df.rolling(8).mean()
+    ema12 = df.rolling(12).mean()
+    ema26 = df.rolling(26).mean()
+    std = df.rolling(20).std()
+    band_high = ema20 + 2*std
+    band_low = ema20 - 2*std
+    emas = {'ema8':float(ema8.iloc[-1]), 'ema12':float(ema12.iloc[-1]), 'ema26':float(ema26.iloc[-1])}
+    scalp_info = {'emas': emas, 'bands': [float(band_low.iloc[-1]), float(band_high.iloc[-1])], 'last': data[-1]}
+    with open('{}{}'.format(symbol,outPutFile), 'w') as json_file:
+        json.dump(scalp_info, json_file)
+    sleep(1)
+
 with open('historicalsPid.json') as json_file:
     pid = json.load(json_file)
 os.system("kill -9 {}".format(pid))
+print("we are finished")
 
 
 
