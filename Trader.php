@@ -390,7 +390,7 @@ class Trader {
         foreach ($emas as $key=>$target) {
             $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->initialAmount/$numOfLimitOrders), round($target, $this->priceRounds[$this->symbol]));
             $this->targets[$key] = array($order['orderID'], round($target, $this->priceRounds[$this->symbol]));
-            sleep(5);
+            sleep(2);
         }
         $this->amount = abs($this->are_open_positions()['currentQty']);//amount gets updated for the first time.
         sleep(2);
@@ -410,7 +410,7 @@ class Trader {
                         } else {
                             $stopCounter = 1;
                             $stop = $this->stopLoss[$stopCounter];
-                            $this->log->info("stop point has changed", ["new Stop"=>$stop]);
+                            $this->log->info("stop point has changed", ["new Stop"=>$stop, "stop Counter"=>$stopCounter]);
                         }
                     }
                 }
@@ -435,7 +435,6 @@ class Trader {
                 elseif ($compoundVisit == False and $stopCounter == 0) {
                     $this->log->info("position will compound now as it reached threshold stop:".$stop,["ticker"=>$ticker]);
                     $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->get_limit_price($this->side) + $this->leap);
-                    $this->maxCompunds -= 1;
                     $compoundVisit = True;
                     sleep(2);
                 }
@@ -486,11 +485,19 @@ class Trader {
                 $this->log->info("new stopLoss been set acording to ticker:".$lastPrice." and interval:".$this->stopLossInterval, ['stopLoss'=>$this->stopLoss]);
                 $stop = $this->stopLoss[0];
                 $newAmount = intval($this->amount/$numOfLimitOrders);
-                foreach ($this->targets as $target) {
-                    $this->log->info("Updating target as it has changed.",["new Amount"=>$newAmount]);
-                    $this->true_edit($target[0], null, $newAmount, null);
-                    sleep(2);
+                $this->log->info("Updating targets as they have changed.",["new Amount"=>$newAmount]);
+                foreach ($this->targets as &$target) {
+                    if ($this->get_open_order_by_id($target[0])) {
+                        $this->true_edit($target[0], null, $newAmount, null);
+                        sleep(2);
+                    } else {
+                        $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $newAmount, $target[1]);
+                        $target[0] = $order['orderID'];
+                        $this->log->info("recreated target as it was allready filled", ["target"=>$target]);
+                    }
+
                 }
+                $this->maxCompunds -= 1;
                 $compoundVisit = False;
             } else {
                 continue;
