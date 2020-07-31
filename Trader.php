@@ -407,6 +407,15 @@ class Trader {
                     if ($stopCounter == 0) {
                         if ($ticker > $this->stopLoss[1] and $this->side == "Sell" or $ticker < $this->stopLoss[1] and $this->side == "Buy") {
                             $this->log->info("cannot change stop point to ".$this->stopLoss[1]." as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
+                            $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
+                            $scalpInfo = json_decode(json_encode($scalpInfo), true);
+                            $lastCandle = $scalpInfo['last']['high'];
+                            if ($lastCandle < $this->stopLoss[0] and $this->side == "Sell" or $lastCandle > $this->stopLoss[0] and $this->side == "Buy") {
+                                $this->stopLoss[0] = $lastCandle;
+                                $stop = $this->stopLoss[0];
+                                $this->log->info("changing the stop loss to last candle high", ["stoploss"=>$this->stopLoss]);
+                            }
+
                         } else {
                             $stopCounter = 1;
                             $stop = $this->stopLoss[$stopCounter];
@@ -417,8 +426,8 @@ class Trader {
             }
             sleep(2);
             $ticker = $this->get_ticker()['last'];
-            if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {
-                if ($this->maxCompunds == 0 and $numOfLimitOrders != 3 or $stopCounter == 1) {
+            if ($ticker > $stop and $this->side == "Sell" or $ticker < $stop and $this->side == "Buy") {//closing the trade
+                if ($this->maxCompunds == 0 and $numOfLimitOrders != 3 or $numOfLimitOrders < 3) {//stop Counter is the variable that determines if stop loss moved to a closer point with price
                     $this->log->info("closing the position as it reached threshold stop:".$stop,["ticker"=>$ticker]);
                     $this->true_cancel_all_orders();
                     sleep(2);
@@ -432,7 +441,7 @@ class Trader {
                     }
                     sleep(2);
                 }
-                elseif ($compoundVisit == False and $stopCounter == 0) {
+                elseif ($compoundVisit == False) {// or else compounding
                     $this->log->info("position will compound now as it reached threshold stop:".$stop,["ticker"=>$ticker]);
                     $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->get_limit_price($this->side) + $this->leap);
                     $compoundVisit = True;
@@ -486,16 +495,9 @@ class Trader {
                 $stop = $this->stopLoss[0];
                 $newAmount = intval($this->amount/$numOfLimitOrders);
                 $this->log->info("Updating targets as they have changed.",["new Amount"=>$newAmount]);
-                foreach ($this->targets as &$target) {
-                    if ($this->get_open_order_by_id($target[0])) {
-                        $this->true_edit($target[0], null, $newAmount, null);
-                        sleep(2);
-                    } else {
-                        $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $newAmount, $target[1]);
-                        $target[0] = $order['orderID'];
-                        $this->log->info("recreated target as it was allready filled", ["target"=>$target]);
-                    }
-
+                foreach ($this->targets as $target) {
+                    $this->true_edit($target[0], null, $newAmount, null);
+                    sleep(2);
                 }
                 $this->maxCompunds -= 1;
                 $compoundVisit = False;
