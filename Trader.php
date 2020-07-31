@@ -409,11 +409,11 @@ class Trader {
                             $this->log->info("cannot change stop point to ".$this->stopLoss[1]." as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
                             $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
                             $scalpInfo = json_decode(json_encode($scalpInfo), true);
-                            $lastCandle = $scalpInfo['last']['high'];
-                            if ($lastCandle < $this->stopLoss[0] and $this->side == "Sell" or $lastCandle > $this->stopLoss[0] and $this->side == "Buy") {
-                                $this->stopLoss[0] = $lastCandle;
+                            $lastCandle = $scalpInfo['last'];
+                            if ($lastCandle['high'] < $this->stopLoss[0] and $this->side == "Sell" or $lastCandle['high'] > $this->stopLoss[0] and $this->side == "Buy") {
+                                $this->stopLoss[0] = $lastCandle['high'];
                                 $stop = $this->stopLoss[0];
-                                $this->log->info("changing the stop loss to last candle high", ["stoploss"=>$this->stopLoss]);
+                                $this->log->info("changing the stop loss to last candle high", ["stoploss"=>$this->stopLoss, "lastCandle"=>$lastCandle]);
                             }
 
                         } else {
