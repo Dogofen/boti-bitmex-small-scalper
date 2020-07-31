@@ -116,6 +116,21 @@ class Trader {
         } while (!is_array($result));
         $this->log->info("open orders canceled.", ["limit orders"=>$this->is_limit()]);
     }
+    public function true_cancel_order($orderId) {
+        $result = False;
+        $this->log->info("cancelling order.", ["order"=>$orderId]);
+        do {
+            try {
+                $result = $this->bitmex->cancelOpenOrder($orderId);
+                sleep(3);
+            } catch (Exception $e) {
+                $this->log->error("Failed to submit", ['error'=>$e]);
+                break;
+            }
+        } while (!is_array($result));
+        $this->log->info("open orders canceled.", ["limit orders"=>$this->is_limit()]);
+    }
+
 
      public function true_edit($orderId, $price, $amount, $stopPx) {
         $result = False;
@@ -538,46 +553,32 @@ class Trader {
         }
         shell_exec('touch '.$this->tradeFile);
         $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
-        $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
-        $scalpInfo = json_decode(json_encode($scalpInfo), true);
-        $lastCandle = $scalpInfo['last'];
-
-        $ticker = $this->get_ticker()['last'];
-        if ($this->side == "Buy" and $ticker <= $lastCandle['close']) {
-            $price = $ticker;
-        }
-        elseif ($this->side == "Sell" and $ticker >= $lastCandle['close']) {
-            $price = $ticker;
-        }
-        else {
-            $price = $lastCandle['close'];
-        }
-
-        if (!$this->true_create_order('Limit', $this->side, $this->amount, $price)) {
+        $price = $this->get_limit_price($this->side);
+        $order = $this->true_create_order('Limit', $this->side, $this->initialAmount, $price);
+        if (!$order) {
             shell_exec("rm ".$this->tradeFile);
             $this->log->error("Failed to create order", ['side'=>$this->side]);
             return;
         }
         if (!$this->verify_limit_order()) {
             $this->log->error("limit order was not filled thus canceling",["timeframe"=>$this->timeFrame]);
-            $this->true_cancel_all_orders();
+            $this->true_cancel_order($order['orderID']);
             return;
         }
-        sleep(10);
-        $position = $this->are_open_positions();
+        sleep(2);
+        $this->amount = abs($this->are_open_positions()['currentQty']);
         sleep(2);
         if ($stopOrder = $this->is_stop()) {
-            $this->true_edit($stopOrder, null, $position['currentQty'], $this->stopPx);
+            $this->true_edit($stopOrder, null, $this->amount, $this->stopPx);
         } else {
             $this->true_create_order('Stop', $this->get_opposite_trade_side(), $this->amount, null, $this->stopPx);
         }
-        if (microtime(true) - $this->startTime < $this->timeFrame*60) {
+        if (microtime(true) - $this->startTime < 60) {
             $this->log->info("waiting the remaining of the timeframe to finish",['timeframe'=>$this->timeFrame]);
             do {
                 sleep(1);
-            } while (microtime(true) - $this->startTime < $this->timeFrame*60);
+            } while (microtime(true) - $this->startTime < 60);
         }
-        $this->log->info("Trade have finished removing trade File", ["tradeFile"=>file_exists($this->tradeFile)]);
         return True;
     }
 }

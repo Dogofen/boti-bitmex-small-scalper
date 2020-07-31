@@ -42,6 +42,7 @@ while (counter < int(times)):
     with open('{}{}'.format(symbol,outPutFile), 'w') as json_file:
         json.dump(scalp_info, json_file)
     if  float(band_low.iloc[-1]) - float(data[-1]['close']) >= closeInterval[symbol]["Buy"]:
+        print("the result {}".format(float(band_low.iloc[-1]) - float(data[-1]['close']))
         if side == "Buy" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
                 os.system("php CreateTrade.php {} Buy {} {} {} &".format(symbol, amount, stopPx, strategy))
@@ -49,6 +50,7 @@ while (counter < int(times)):
                 print("number of executions is {}".format(counter))
                 sleep(5)
     if float(data[-1]['close']) - float(band_high.iloc[-1]) >= closeInterval[symbol]["Sell"]:
+        print("the result {}".format(float(data[-1]['close']) - float(band_high.iloc[-1]))
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
                 os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))

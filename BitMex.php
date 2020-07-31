@@ -349,7 +349,17 @@ class BitMex {
       "symbol" => $symbol,
       "text" => $text
     );
+    return $this->authQuery($data);
+  }
+  public function cancelOpenOrder($orderId, $clOrdID=null, $text="") {
 
+    $data['method'] = "DELETE";
+    $data['function'] = "order";
+    $data['params'] = array(
+      "orderID" => $orderId,
+      "clOrdID" => $clOrdID,
+      "text" => $text
+    );
     return $this->authQuery($data);
   }
 
@@ -451,12 +461,7 @@ class BitMex {
 
     $method = $data['method'];
     $function = $data['function'];
-    if($method == "GET" || $method == "POST" || $method == "PUT") {
-      $params = http_build_query($data['params']);
-    }
-    elseif($method == "DELETE") {
-      $params = json_encode($data['params']);
-    }
+    $params = http_build_query($data['params']);
     $path = self::API_PATH . $function;
     $url = $this->apiUrl . self::API_PATH . $function;
     if($method == "GET" && count($data['params']) >= 1) {
