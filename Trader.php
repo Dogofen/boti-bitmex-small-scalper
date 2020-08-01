@@ -422,13 +422,11 @@ class Trader {
                     if ($stopCounter == 0) {
                         if ($ticker > $this->stopLoss[1] and $this->side == "Sell" or $ticker < $this->stopLoss[1] and $this->side == "Buy") {
                             $this->log->info("cannot change stop point to ".$this->stopLoss[1]." as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
-                            $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
-                            $scalpInfo = json_decode(json_encode($scalpInfo), true);
-                            $lastCandle = $scalpInfo['last'];
-                            if ($lastCandle['high'] < $this->stopLoss[0] and $this->side == "Sell" or $lastCandle['high'] > $this->stopLoss[0] and $this->side == "Buy") {
-                                $this->stopLoss[0] = $lastCandle['high'];
+                            $lastCandle = json_decode(file_get_contents("XBTUSD_historical.json"))[0];
+                            if ($lastCandle->high < $this->stopLoss[0] and $this->side == "Sell" or $lastCandle->low > $this->stopLoss[0] and $this->side == "Buy") {
+                                $this->stopLoss[0] = $this->is_buy() ? $lastCandle->low:$lastCandle->high;
                                 $stop = $this->stopLoss[0];
-                                $this->log->info("changing the stop loss to last candle high", ["stoploss"=>$this->stopLoss, "lastCandle"=>$lastCandle]);
+                                $this->log->info("changing the stop loss to last candle", ["stoploss"=>$this->stopLoss, "lastCandle"=>$lastCandle]);
                             }
 
                         } else {
@@ -456,7 +454,7 @@ class Trader {
                     }
                     sleep(2);
                 }
-                elseif ($compoundVisit == False) {// or else compounding
+                elseif ($compoundVisit == False and $this->maxCompunds > 0) {// or else compounding
                     $this->log->info("position will compound now as it reached threshold stop:".$stop,["ticker"=>$ticker]);
                     $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->get_limit_price($this->side) + $this->leap);
                     $compoundVisit = True;
