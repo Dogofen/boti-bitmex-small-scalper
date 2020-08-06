@@ -408,6 +408,7 @@ class Trader {
             sleep(2);
         }
         $this->amount = abs($this->are_open_positions()['currentQty']);//amount gets updated for the first time.
+        $openOrders = $this->are_open_orders();
         sleep(2);
         do {
             if (!$this->is_limit()) { // does the function need to close?
@@ -422,7 +423,7 @@ class Trader {
                     if ($stopCounter == 0) {
                         if ($ticker > $this->stopLoss[1] and $this->side == "Sell" or $ticker < $this->stopLoss[1] and $this->side == "Buy") {
                             $this->log->info("cannot change stop point to ".$this->stopLoss[1]." as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
-                            $lastCandle = json_decode(file_get_contents("XBTUSD_historical.json"))[0];
+                            $lastCandle = json_decode(file_get_contents("XBTUSD_historical.json"))[1];
                             if ($lastCandle->high < $this->stopLoss[0] and $this->side == "Sell" or $lastCandle->low > $this->stopLoss[0] and $this->side == "Buy") {
                                 $this->stopLoss[0] = $this->is_buy() ? $lastCandle->low:$lastCandle->high;
                                 $stop = $this->stopLoss[0];
@@ -436,6 +437,12 @@ class Trader {
                         }
                     }
                 }
+            }
+            sleep(2);
+            $tmpOrders = $this->are_open_orders();
+            if ($tmpOrders != $openOrders) {
+                $openOrders = $tmpOrders;
+                $this->log->info("Open Orders have changed or updated.", ["openOrders"=>$openOrders]);
             }
             sleep(2);
             $ticker = $this->get_ticker()['last'];
@@ -466,7 +473,7 @@ class Trader {
             $scalpInfo = json_decode(json_encode($scalpInfo), true);
             $emas = $scalpInfo['emas'];
             foreach ($emas as $key=>$target) {
-                if (!$this->get_open_order_by_id($this->targets[$key][0])) {
+                if (!$this->get_open_order_by_id($this->targets[$key][0])) {//Target does not exists
                     continue;
                 }
                 $target = round($target, $this->priceRounds[$this->symbol]);
@@ -507,7 +514,7 @@ class Trader {
                 $this->log->info("new stopLoss been set acording to ticker:".$lastPrice." and interval:".$this->stopLossInterval, ['stopLoss'=>$this->stopLoss]);
                 $stop = $this->stopLoss[0];
                 $newAmount = intval($this->amount/$numOfLimitOrders);
-                $this->log->info("Updating targets as they have changed.",["new Amount"=>$newAmount]);
+                $this->log->info("Updating targets as they have changed.",["Target Amount"=>$newAmount]);
                 foreach ($this->targets as $target) {
                     $this->true_edit($target[0], null, $newAmount, null);
                     sleep(2);

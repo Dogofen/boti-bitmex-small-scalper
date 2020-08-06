@@ -4,6 +4,10 @@ import datetime
 from time import sleep
 import os
 import sys
+from botlogger import Logger
+botLogger = Logger()
+logger = botLogger.init_logger()
+logger.info('Boti Trading system initiated')
 
 os.system("php historicals.php &")
 sleep(2)
@@ -24,6 +28,7 @@ strategy = sys.argv[5]
 tradeFile = 'scalp_{}'.format(symbol)
 counter = 0
 print("looking for {} Trades of {} {}".format(times, side, symbol))
+logger.info("looking for {} Trades of {} {}".format(times, side, symbol))
 while (counter < int(times)):
     with open("{}{}".format(symbol, historicalFile)) as json_file:
         data = json.load(json_file)
@@ -42,21 +47,28 @@ while (counter < int(times)):
     with open('{}{}'.format(symbol,outPutFile), 'w') as json_file:
         json.dump(scalp_info, json_file)
     if  float(band_low.iloc[-1]) - float(data[-1]['close']) >= closeInterval[symbol]["Buy"]:
-        print("the result {}".format(float(band_low.iloc[-1]) - float(data[-1]['close'])))
         if side == "Buy" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
                 os.system("php CreateTrade.php {} Buy {} {} {} &".format(symbol, amount, stopPx, strategy))
+                logger.info("Buy Trade initiated diff is: {} and interval is: {}".format(float(band_low.iloc[-1]) - float(data[-1]['close']), closeInterval[symbol]["Buy"]))
+                logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
                 sleep(5)
     if float(data[-1]['close']) - float(band_high.iloc[-1]) >= closeInterval[symbol]["Sell"]:
-        print("the result {}".format(float(data[-1]['close']) - float(band_high.iloc[-1])))
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
                 os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))
+                logger.info("Sell Trade initiated diff is: {} and interval is: {}".format(float(data[-1]['close']) - float(band_high.iloc[-1]), closeInterval[symbol]["Buy"]))
+                logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
                 counter = counter + 1
+                logger.info("number of executions is {}".format(counter))
                 print("number of executions is {}".format(counter))
                 sleep(5)
+    now = datetime.datetime.now()
+    if now.minute%timeFrame == 0 and 0 <= now.second <= 3:
+        logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
+        sleep(3)
     sleep(1)
 
 while (os.path.exists(tradeFile)):
