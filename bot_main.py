@@ -32,15 +32,16 @@ logger.info("looking for {} Trades of {} {}".format(times, side, symbol))
 data = False
 with open("{}{}".format(symbol, historicalFile)) as json_file:
     data = json.load(json_file)
+    data.reverse()
     data.pop()
 while (counter < int(times)):
     with open("{}{}".format(symbol, historicalFile)) as json_file:
         tmp_data = json.load(json_file)
+        tmp_data.reverse()
         tmp_data.pop()
     if tmp_data == data:
         continue
     data = tmp_data
-    data.reverse()
     data_dict = {'timestamp': [d['timestamp'] for d in data], 'close': [d['close'] for d in data]}
     df = pd.DataFrame(data_dict, columns=['timestamp','close'])
     ema20 = df.rolling(20).mean()
@@ -62,7 +63,6 @@ while (counter < int(times)):
                 logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
-                sleep(5)
     if float(data[-1]['close']) - float(band_high.iloc[-1]) >= closeInterval[symbol]["Sell"]:
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
@@ -72,12 +72,7 @@ while (counter < int(times)):
                 counter = counter + 1
                 logger.info("number of executions is {}".format(counter))
                 print("number of executions is {}".format(counter))
-                sleep(5)
-    now = datetime.datetime.now()
-    if now.minute%timeFrame == 0 and 0 <= now.second <= 3:
-        logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
-        sleep(3)
-    sleep(1)
+    logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
 
 while (os.path.exists(tradeFile)):
     print("continuting until last trade is over")
