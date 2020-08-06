@@ -29,11 +29,18 @@ tradeFile = 'scalp_{}'.format(symbol)
 counter = 0
 print("looking for {} Trades of {} {}".format(times, side, symbol))
 logger.info("looking for {} Trades of {} {}".format(times, side, symbol))
+data = False
+with open("{}{}".format(symbol, historicalFile)) as json_file:
+    data = json.load(json_file)
+    data.pop()
 while (counter < int(times)):
     with open("{}{}".format(symbol, historicalFile)) as json_file:
-        data = json.load(json_file)
+        tmp_data = json.load(json_file)
+        tmp_data.pop()
+    if tmp_data == data:
+        continue
+    data = tmp_data
     data.reverse()
-    data.pop()
     data_dict = {'timestamp': [d['timestamp'] for d in data], 'close': [d['close'] for d in data]}
     df = pd.DataFrame(data_dict, columns=['timestamp','close'])
     ema20 = df.rolling(20).mean()
