@@ -35,11 +35,18 @@ with open("{}{}".format(symbol, historicalFile)) as json_file:
     data.reverse()
     data.pop()
 while (counter < int(times)):
-    with open("{}{}".format(symbol, historicalFile)) as json_file:
-        tmp_data = json.load(json_file)
-        tmp_data.reverse()
-        tmp_data.pop()
+    try:
+        with open("{}{}".format(symbol, historicalFile)) as json_file:
+            tmp_data = json.load(json_file)
+            tmp_data.reverse()
+            tmp_data.pop()
+    except Exception as e:
+        logger.error('caught an error during file read {}'.format(e))
+        sleep(1)
+        continue
+
     if tmp_data == data:
+        sleep(1)
         continue
     data = tmp_data
     data_dict = {'timestamp': [d['timestamp'] for d in data], 'close': [d['close'] for d in data]}
@@ -60,7 +67,6 @@ while (counter < int(times)):
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
                 os.system("php CreateTrade.php {} Buy {} {} {} &".format(symbol, amount, stopPx, strategy))
                 logger.info("Buy Trade initiated diff is: {} and interval is: {}".format(float(band_low.iloc[-1]) - float(data[-1]['close']), closeInterval[symbol]["Buy"]))
-                logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
     if float(data[-1]['close']) - float(band_high.iloc[-1]) >= closeInterval[symbol]["Sell"]:
@@ -68,7 +74,6 @@ while (counter < int(times)):
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
                 os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))
                 logger.info("Sell Trade initiated diff is: {} and interval is: {}".format(float(data[-1]['close']) - float(band_high.iloc[-1]), closeInterval[symbol]["Buy"]))
-                logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
                 counter = counter + 1
                 logger.info("number of executions is {}".format(counter))
                 print("number of executions is {}".format(counter))
