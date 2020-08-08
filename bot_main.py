@@ -78,6 +78,14 @@ while (counter < int(times)):
                 logger.info("number of executions is {}".format(counter))
                 print("number of executions is {}".format(counter))
     logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
+    try:
+        with open('conf.json') as json_file:
+            config = json.load(json_file)
+    except Exception as e:
+        logger.error('caught an error during config file read {}'.format(e))
+        sleep(1)
+        continue
+
 
 while (os.path.exists(tradeFile)):
     print("continuting until last trade is over")
