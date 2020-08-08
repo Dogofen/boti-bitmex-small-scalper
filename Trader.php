@@ -26,6 +26,7 @@ class Trader {
     private $leap;
     private $stopPx;
     private $maxCompunds;
+    private $sumOfLimitOrders;
 
 
     public function __construct($symbol, $side, $amount, $stopPx = null) {
@@ -442,7 +443,11 @@ class Trader {
             $tmpOrders = $this->are_open_orders();
             if ($tmpOrders != $openOrders) {
                 $openOrders = $tmpOrders;
-                $this->log->info("Open Orders have changed or updated.", ["openOrders"=>$openOrders]);
+                $this->sumOfLimitOrders = 0;
+                foreach($openOrders as $order) {
+                    $this->sumOfLimitOrders += abs($order["orderQty"]);
+                }
+                $this->log->info("Open Orders have changed or updated.", ["sum of limit orders"=>$this->sumOfLimitOrders]);
             }
             sleep(2);
             $ticker = $this->get_ticker()['last'];
@@ -497,7 +502,7 @@ class Trader {
             if ($newAmount < $this->amount) {
                 $this->amount = $newAmount;
             }
-            elseif ($newAmount > $this->amount) {
+            elseif ($newAmount > $this->amount or $newAmount != $this->sumOfLimitOrders) {
                 $this->amount = $newAmount;
                 $this->log->info("compound was succesfull, updating the targets and stopLoss.", ["newAmount"=>$newAmount]);
                 $price = $position["avgEntryPrice"];
