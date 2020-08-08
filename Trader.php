@@ -410,6 +410,10 @@ class Trader {
         }
         $this->amount = abs($this->are_open_positions()['currentQty']);//amount gets updated for the first time.
         $openOrders = $this->are_open_orders();
+        $this->sumOfLimitOrders = 0;
+        foreach($openOrders as $order) {
+            $this->sumOfLimitOrders += abs($order["orderQty"]);
+        }
         sleep(2);
         do {
             if (!$this->is_limit()) { // does the function need to close?
@@ -502,7 +506,7 @@ class Trader {
             if ($newAmount < $this->amount) {
                 $this->amount = $newAmount;
             }
-            elseif ($newAmount > $this->amount or $newAmount != $this->sumOfLimitOrders) {
+            elseif ($newAmount > $this->amount) {
                 $this->amount = $newAmount;
                 $this->log->info("compound was succesfull, updating the targets and stopLoss.", ["newAmount"=>$newAmount]);
                 $price = $position["avgEntryPrice"];
@@ -518,14 +522,22 @@ class Trader {
                 }
                 $this->log->info("new stopLoss been set acording to ticker:".$lastPrice." and interval:".$this->stopLossInterval, ['stopLoss'=>$this->stopLoss]);
                 $stop = $this->stopLoss[0];
-                $newAmount = intval($this->amount/$numOfLimitOrders);
+                $targetAmount = intval($this->amount/$numOfLimitOrders);
                 $this->log->info("Updating targets as they have changed.",["Target Amount"=>$newAmount]);
                 foreach ($this->targets as $target) {
-                    $this->true_edit($target[0], null, $newAmount, null);
+                    $this->true_edit($target[0], null, $targetAmount, null);
                     sleep(2);
                 }
                 $this->maxCompunds -= 1;
                 $compoundVisit = False;
+            }
+            elseif ($newAmount != $this->sumOfLimitOrders) {
+                 foreach ($this->targets as $target) {
+                     $this->amount = $newAmount;
+                     $targetAmount= intval($this->amount/$numOfLimitOrders);
+                     $this->true_edit($target[0], null, $targetAmount, null);
+                     sleep(1);
+                }
             } else {
                 continue;
             }
