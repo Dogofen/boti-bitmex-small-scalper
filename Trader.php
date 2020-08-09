@@ -135,7 +135,7 @@ class Trader {
 
      public function true_edit($orderId, $price, $amount, $stopPx) {
         $result = False;
-        $this->log->info("editing order.", ["orderId" => $orderId]);
+        $this->log->info("editing order.", ["orderId" => $orderId, "price"=>$price, "amount"=>$amount, "stop"=>$stopPx]);
         do {
             try {
                 $result = $this->bitmex->editOrder($orderId, $price, $amount, $stopPx);
@@ -525,7 +525,7 @@ class Trader {
                 $this->log->info("new stopLoss been set acording to ticker:".$lastPrice." and interval:".$this->stopLossInterval, ['stopLoss'=>$this->stopLoss]);
                 $stop = $this->stopLoss[0];
                 $targetAmount = intval($this->amount/$numOfLimitOrders);
-                $this->log->info("Updating targets as the amount changed.",["Target Amount"=>$newAmount]);
+                $this->log->info("Updating targets as the amount changed.",["Target Amount"=>$targetAmount]);
                 foreach ($this->targets as $target) {
                     $this->true_edit($target[0], null, $targetAmount, null);
                     sleep(2);
@@ -533,10 +533,10 @@ class Trader {
                 $this->maxCompunds -= 1;
                 $compoundVisit = False;
             }
-            elseif ($newAmount != $this->sumOfLimitOrders) {
-                $this->log->info("Updating the amount of targets.",["amount"=>$newAmount]);
+            elseif ($newAmount > $this->sumOfLimitOrders) {
+                $this->log->info("Updating the amount of targets.",["amount"=>$targetAmount]);
+                $this->amount = $newAmount;
                 foreach ($this->targets as $target) {
-                    $this->amount = $newAmount;
                     $targetAmount= intval($this->amount/$numOfLimitOrders);
                     $this->true_edit($target[0], null, $targetAmount, null);
                     sleep(1);
