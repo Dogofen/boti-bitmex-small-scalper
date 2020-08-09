@@ -81,6 +81,10 @@ while (counter < int(times)):
     try:
         with open('conf.json') as json_file:
             config = json.load(json_file)
+            amount = config['amount']
+            closeInterval = config['closeInterval']
+            timeFrame = config['timeframe']
+
     except Exception as e:
         logger.error('caught an error during config file read {}'.format(e))
         sleep(1)

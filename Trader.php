@@ -447,11 +447,14 @@ class Trader {
             $tmpOrders = $this->are_open_orders();
             if ($tmpOrders != $openOrders) {
                 $openOrders = $tmpOrders;
-                $this->sumOfLimitOrders = 0;
+                $sumOfLimitOrders = 0;
                 foreach($openOrders as $order) {
-                    $this->sumOfLimitOrders += abs($order["orderQty"]);
+                    $sumOfLimitOrders += abs($order["orderQty"]);
                 }
-                $this->log->info("Open Orders have changed or updated.", ["sum of limit orders"=>$this->sumOfLimitOrders]);
+                if ($sumOfLimitOrders != $this->sumOfLimitOrders) {
+                    $this->sumOfLimitOrders = $sumOfLimitOrders;
+                    $this->log->info("Open Orders have changed or updated.", ["sum of limit orders"=>$this->sumOfLimitOrders]);
+                }
             }
             sleep(2);
             $ticker = $this->get_ticker()['last'];
@@ -481,13 +484,13 @@ class Trader {
             $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
             $scalpInfo = json_decode(json_encode($scalpInfo), true);
             $emas = $scalpInfo['emas'];
+            $this->log->info("Updating Targets as Prices have changed",[$target]);
             foreach ($emas as $key=>$target) {
                 if (!$this->get_open_order_by_id($this->targets[$key][0])) {//Target does not exists
                     continue;
                 }
                 $target = round($target, $this->priceRounds[$this->symbol]);
                 if ($target != $this->targets[$key][1]) {
-                    $this->log->info("Updating ".$key." as it has changed",[$target]);
                     $ticker = $this->get_ticker()['last'];
                     sleep(2);
                     $price = $target;
@@ -523,7 +526,7 @@ class Trader {
                 $this->log->info("new stopLoss been set acording to ticker:".$lastPrice." and interval:".$this->stopLossInterval, ['stopLoss'=>$this->stopLoss]);
                 $stop = $this->stopLoss[0];
                 $targetAmount = intval($this->amount/$numOfLimitOrders);
-                $this->log->info("Updating targets as they have changed.",["Target Amount"=>$newAmount]);
+                $this->log->info("Updating targets as the amount changed.",["Target Amount"=>$newAmount]);
                 foreach ($this->targets as $target) {
                     $this->true_edit($target[0], null, $targetAmount, null);
                     sleep(2);
@@ -532,11 +535,12 @@ class Trader {
                 $compoundVisit = False;
             }
             elseif ($newAmount != $this->sumOfLimitOrders) {
-                 foreach ($this->targets as $target) {
-                     $this->amount = $newAmount;
-                     $targetAmount= intval($this->amount/$numOfLimitOrders);
-                     $this->true_edit($target[0], null, $targetAmount, null);
-                     sleep(1);
+                $this->log->info("Updating the amount of targets.",["amount"=>$newAmount]);
+                foreach ($this->targets as $target) {
+                    $this->amount = $newAmount;
+                    $targetAmount= intval($this->amount/$numOfLimitOrders);
+                    $this->true_edit($target[0], null, $targetAmount, null);
+                    sleep(1);
                 }
             } else {
                 continue;
