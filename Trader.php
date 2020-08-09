@@ -484,7 +484,6 @@ class Trader {
             $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
             $scalpInfo = json_decode(json_encode($scalpInfo), true);
             $emas = $scalpInfo['emas'];
-            $this->log->info("Updating Targets as Prices have changed",[$target]);
             foreach ($emas as $key=>$target) {
                 if (!$this->get_open_order_by_id($this->targets[$key][0])) {//Target does not exists
                     continue;
