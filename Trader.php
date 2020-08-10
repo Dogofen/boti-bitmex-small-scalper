@@ -449,7 +449,9 @@ class Trader {
                 $openOrders = $tmpOrders;
                 $sumOfLimitOrders = 0;
                 foreach($openOrders as $order) {
-                    $sumOfLimitOrders += abs($order["orderQty"]);
+                    if($order["ordType"] == "Limit" and $order["side"] == $this->get_opposite_trade_side()) {
+                        $sumOfLimitOrders += abs($order["orderQty"]);
+                    }
                 }
                 if ($sumOfLimitOrders != $this->sumOfLimitOrders) {
                     $this->sumOfLimitOrders = $sumOfLimitOrders;
