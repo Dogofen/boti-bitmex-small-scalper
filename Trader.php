@@ -169,7 +169,7 @@ class Trader {
                     return false;
                 }
                 $this->log->error("Failed to create/close position retrying in 3 seconds", ['error'=>$e]);
-                sleep(3);
+                sleep(1);
                 continue;
             }
             $this->log->info("Position has been created on Bitmex.", ['Strategy'=>$this->strategy.' '.$this->side]);
