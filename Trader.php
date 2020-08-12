@@ -433,8 +433,14 @@ class Trader {
                                 $this->stopLoss[0] = $this->is_buy() ? $lastCandle->low:$lastCandle->high;
                                 $stop = $this->stopLoss[0];
                                 $this->log->info("changing the stop loss to last candle", ["stoploss"=>$this->stopLoss, "lastCandle"=>$lastCandle]);
+                            } else {
+                                if ($this->side == "Sell") {
+                                    $this->log->info("Stop loss was not changed to last candle high because terms were not met.",["ticker"=>$ticker, "stoploss"=>$this->stopLoss[0],"last candle"=>$lastCandle]);
+                                }
+                                if ($this->side == "Buy") {
+                                    $this->log->info("Stop loss was not changed to last candle low because terms were not met.",["ticker"=>$ticker, "stoploss"=>$this->stopLoss[0],"last candle"=>$lastCandle]);
+                                }
                             }
-
                         } else {
                             $stopCounter = 1;
                             $stop = $this->stopLoss[$stopCounter];
