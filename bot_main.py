@@ -73,7 +73,7 @@ while (counter < int(times)):
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
                 os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))
-                logger.info("Sell Trade initiated diff is: {} and interval is: {}".format(float(data[-1]['close']) - float(band_high.iloc[-1]), closeInterval[symbol]["Buy"]))
+                logger.info("Sell Trade initiated diff is: {} and interval is: {}".format(float(data[-1]['close']) - float(band_high.iloc[-1]), closeInterval[symbol]["Sell"]))
                 counter = counter + 1
                 logger.info("number of executions is {}".format(counter))
                 print("number of executions is {}".format(counter))
