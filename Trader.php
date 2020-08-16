@@ -380,6 +380,7 @@ class Trader {
         $ticker = $this->get_ticker()['last'];
         if ($this->side == "Buy" and $ticker <= $lastCandle['close']) {
             $price = $this->get_limit_price($this->side);
+            $this->log->info("updating price as ticker shows price dropped.",["price"=>$price]);
             if ($ticker <= $lastCandle['low']) {
                 $this->marketStop = $price -2*$this->stopLossInterval;
                 $this->stopLoss = array($ticker - $this->stopLossInterval, $price);
@@ -388,6 +389,7 @@ class Trader {
         }
         elseif ($this->side == "Sell" and $ticker >= $lastCandle['close']) {
             $price = $this->get_limit_price($this->side);
+            $this->log->info("updating price as ticker shows price surged.",["price"=>$price]);
             if ($ticker >= $lastCandle['high']) {
                 $this->marketStop = $price + 2*$this->stopLossInterval;
                 $this->stopLoss = array($ticker + $this->stopLossInterval, $price);
