@@ -49,7 +49,7 @@ class Trader {
         $this->stopPx = $stopPx;
         $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
         $scalpInfo = json_decode(json_encode($scalpInfo), true);
-        $this->stopLossInterval = intval($config['stopLoss'][$this->symbol]);
+        $this->stopLossInterval = floatval($config['stopLoss'][$this->symbol]);
         $lastTicker = $scalpInfo['last'];
 
         if ($side == "Buy") {
