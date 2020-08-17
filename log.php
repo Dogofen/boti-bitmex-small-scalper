@@ -1,6 +1,8 @@
 <?php
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
+Logger::setTimezone(new \DateTimeZone('Asia/Jerusalem'));
+
 
 function create_logger($logPath) {
     $startTime = microtime(true);
