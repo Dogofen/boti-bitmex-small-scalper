@@ -438,7 +438,7 @@ class Trader {
                     if ($stopCounter == 0) {
                         if ($ticker > $this->stopLoss[1] and $this->side == "Sell" or $ticker < $this->stopLoss[1] and $this->side == "Buy") {
                             $this->log->info("cannot change stop point to ".$this->stopLoss[1]." as it will be triggered immidietly.", ["price=>"=>$ticker, "stop=>"=>$stop]);
-                            $lastCandle = json_decode(file_get_contents("XBTUSD_historical.json"))[1];
+                            $lastCandle = json_decode(file_get_contents($this->symbol."_historical.json"))[1];
                             if ($lastCandle->high < $this->stopLoss[0] and $this->side == "Sell" or $lastCandle->low > $this->stopLoss[0] and $this->side == "Buy" or $this->stopLoss[0] < $ticker and $this->side == "Sell" or $this->stopLoss[0] > $ticker and $this->side == "Buy" or $this->maxCompunds < 0) {
                                 $this->stopLoss[0] = $this->is_buy() ? $lastCandle->low:$lastCandle->high;
                                 $stop = $this->stopLoss[0];
