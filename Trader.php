@@ -489,7 +489,11 @@ class Trader {
                 elseif ($compoundVisit == False) {
                     if ($this->maxCompunds > 0) {// or else compounding
                         $this->log->info("position will compound now as it reached threshold stop:".$stop,["ticker"=>$ticker]);
-                        $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->get_limit_price($this->side) + $this->leap);
+                        if ($ticker > $stop and $this->side =="Sell" or $ticker < $stop and $this->side == "Buy") {
+                            $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->get_limit_price($this->side) + $this->leap);
+                        } else {
+                            $this->true_create_order('Limit', $this->side, $this->initialAmount, $stop);
+                        }
                         $compoundVisit = True;
                     }
                     elseif ($this->maxCompunds == 0) {
