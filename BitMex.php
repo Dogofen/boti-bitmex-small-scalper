@@ -82,6 +82,44 @@ class BitMex {
         throw new Exception("Failed to get a ticker, probably network with bitmex server.");
     }
   }
+  public function getXrateLimit() {
+      $method = "GET";
+      $function = "position";
+      $data['params'] = array(
+      );
+      $params = http_build_query($data['params']);
+      $path = self::API_PATH . $function;
+      $url = $this->apiUrl . self::API_PATH . $function;
+      $url .= "?" . $params;
+      $path .= "?" . $params;
+      $nonce = $this->generateNonce();
+      $post = "";
+      $sign = hash_hmac('sha256', $method.$path.$nonce.$post, $this->apiSecret);
+
+      $headers = array();
+
+      $headers[] = "api-signature: $sign";
+      $headers[] = "api-key: {$this->apiKey}";
+      $headers[] = "api-nonce: $nonce";
+
+      $headers[] = 'Connection: Keep-Alive';
+      $headers[] = 'Keep-Alive: 90';
+
+      curl_reset($this->ch);
+      curl_setopt($this->ch, CURLOPT_URL, $url);
+      curl_setopt($this->ch, CURLOPT_HTTPHEADER, $headers);
+      curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER , false);
+      curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($this->ch, CURLOPT_HEADER, 1);
+      $return = curl_exec($this->ch);
+      $limitArray = preg_split("/X-RateLimit-Reset/",$return);
+      $xLimit = preg_split("/X-RateLimit-Limit: 60/",$limitArray[0]);
+      return trim($xLimit[1]);
+  }
+
+
+
+
 
   /*
    * Get Candles
@@ -287,6 +325,27 @@ class BitMex {
     return $this->authQuery($data);
   }
 
+  public function bulkEditOrders($orderIDs,$prices, $quantities=null, $stopPxs=null) {
+
+    $data['method'] = "PUT";
+    $data['function'] = "order/bulk";
+    $counter = 0;
+    $orders = array();
+    foreach($orderIDs as $id) {
+        array_push($orders, array(
+            "orderID" => $id,
+            "orderQty" => $quantities[$counter],
+            "stopPx"   => $stopPxs[$counter],
+            "price" => $prices[$counter])
+        );
+        $counter += 1;
+    }
+
+    $data['params'] = $orders;
+    return $this->authQuery($data);
+  }
+
+
   /*
    * Create Order
    *
@@ -461,7 +520,12 @@ class BitMex {
 
     $method = $data['method'];
     $function = $data['function'];
-    $params = http_build_query($data['params']);
+    if ($function == "order/bulk") {
+        $params = rawurlencode(''.json_encode($data['params']));
+    }
+    else {
+        $params = http_build_query($data['params']);
+    }
     $path = self::API_PATH . $function;
     $url = $this->apiUrl . self::API_PATH . $function;
     if($method == "GET" && count($data['params']) >= 1) {
@@ -472,10 +536,12 @@ class BitMex {
     if($method == "GET") {
       $post = "";
     }
+    elseif($function == "order/bulk") {
+        $post = "orders=".$params;
+    }
     else {
       $post = $params;
     }
-
     $sign = hash_hmac('sha256', $method.$path.$nonce.$post, $this->apiSecret);
 
     $headers = array();
@@ -500,7 +566,6 @@ class BitMex {
     }
     if($data['method'] == "PUT") {
       curl_setopt($this->ch, CURLOPT_CUSTOMREQUEST, "PUT");
-      //curl_setopt($this->ch, CURLOPT_PUT, true);
       curl_setopt($this->ch, CURLOPT_POSTFIELDS, $post);
       $headers[] = 'X-HTTP-Method-Override: PUT';
     }
