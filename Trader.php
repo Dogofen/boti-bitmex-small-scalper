@@ -573,7 +573,7 @@ class Trader {
                 $targetAmount = intval($this->amount/$numOfLimitCloseOrders);
                 $this->log->info("Updating targets as the amount changed.",["Target Amount"=>$targetAmount]);
                 $ids = array();
-                $amounts = $array();
+                $amounts = array();
                 foreach ($this->targets as $target) {
                     if (!$this->get_open_order_by_id($this->targets[$key][0])) {//Target does not exists
                         continue;
