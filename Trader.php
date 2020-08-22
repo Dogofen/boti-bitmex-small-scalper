@@ -377,6 +377,33 @@ class Trader {
             $this->sumOfLimitOrders = $sumOfLimitOrders;
             $this->log->info("Open Orders have changed or updated.", ["sum of limit orders"=>$this->sumOfLimitOrders]);
         }
+        try {
+            $rateLimit = $this->bitmex->getXrateLimit();
+        }  catch (Exception $e) {
+            $this->log->error("Falied to get xLimit.",[]);
+            return;
+        }
+        $rate = intval($rateLimit[-2].$rateLimit[-1]);
+        if($rate < 50 and $rate > 40) {
+            $this->log->info("adjusting Rate to limit with 2 seconds wait.",[$rateLimit]);
+            sleep(2);
+        }
+        if($rate < 40 and $rate > 30) {
+            $this->log->info("adjusting Rate to limit with 3 seconds wait.",[$rateLimit]);
+            sleep(3);
+        }
+        if($rate < 30 and $rate > 20) {
+            $this->log->info("adjusting Rate to limit with 4 seconds wait.",[$rateLimit]);
+            sleep(4);
+        }
+        if($rate < 20 and $rate > 10) {
+            $this->log->info("adjusting Rate to limit with 5 seconds wait.",[$rateLimit]);
+            sleep(5);
+        }
+        if($rate < 10) {
+            $this->log->info("adjusting Rate to limit with 10 seconds wait.",[$rateLimit]);
+            sleep(10);
+        }
     }
 
 
