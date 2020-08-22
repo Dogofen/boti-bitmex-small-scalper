@@ -344,7 +344,7 @@ class Trader {
             }
             sleep(2);
             $ticker = $this->get_ticker()['last'];
-            if ($ticker < $lastTicker and $this->side == "Buy" or $ticker > $lastTicker and $this->side == "Sell") {
+            if ($ticker != $lastTicker) {
                 $lastTicker = $ticker;
                 $this->true_edit($order["orderID"], $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap, null, null);
             }
