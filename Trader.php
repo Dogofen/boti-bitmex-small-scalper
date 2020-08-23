@@ -38,8 +38,14 @@ class Trader {
         }
         $this->startTime = microtime(true);
         $config = include('config.php');
+        $leverage = $config['leverage'];
 
         $this->bitmex = new BitMex($config['key'], $config['secret'], $config['testnet']);
+        try {
+            $this->bitmex->setLeverage($leverage, $symbol);
+        } catch (Exception $e) {
+            $this->log->error("Exception during set leverage.",[$e]);
+        }
         $this->timeFrame = $config['timeframe'];
         $this->leap = $config['leap'][$symbol];
         $this->maxCompunds = $config['maxCompunds'];
@@ -264,7 +270,7 @@ class Trader {
     }
 
     public function get_limit_price($side) {
-        sleep(2);
+        sleep(1);
         $orderBook = $this->get_order_book();
         foreach ($orderBook as $book) {
             if ($book["side"] == $side) {
@@ -327,12 +333,13 @@ class Trader {
         } while(!$this->are_open_positions());
         return True;
     }
+
     public function limitCloseOrElse() {
         $ticker = False;
 
-        $lastTicker = $this->get_ticker()['last'];
         $this->log->info("Decided to limit close the position",["ticker"=>$lastTicker]);
-        $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap);
+        $lastLimitPrice = $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap;
+        $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $lastLimitPrice);
         sleep(5);
         if (!$this->are_open_positions()) {
             return;
@@ -343,10 +350,10 @@ class Trader {
                 return;
             }
             sleep(2);
-            $ticker = $this->get_ticker()['last'];
-            if ($ticker != $lastTicker) {
-                $lastTicker = $ticker;
-                $this->true_edit($order["orderID"], $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap, null, null);
+            $limitPrice = $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap;
+            if ($lastLimitPrice != $limitPrice) {
+                $lastLimitPrice = $limitPrice;
+                $this->true_edit($order["orderID"], $limitPrice, null, null);
             }
             sleep(5);
             if (!$this->are_open_positions()) {
@@ -630,7 +637,7 @@ class Trader {
 
         try {
             $wallet = $this->bitmex->getWallet();
-        }  catch (Exception $e) {
+        } catch (Exception $e) {
             $this->log->error("Failed to get wallet.",[]);
         }
         $wallet = end($wallet);
