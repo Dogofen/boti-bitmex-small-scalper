@@ -335,8 +335,6 @@ class Trader {
     }
 
     public function limitCloseOrElse() {
-        $ticker = False;
-
         $this->log->info("Decided to limit close the position",["ticker"=>$lastTicker]);
         $lastLimitPrice = $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap;
         $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $lastLimitPrice);
@@ -360,7 +358,7 @@ class Trader {
                 return;
             }
             sleep(2);
-        } while ($ticker < $this->marketStop and $this->side == "Sell" or $ticker > $this->marketStop and $this->side == "Buy");
+        } while ($limitPrice < $this->marketStop and $this->side == "Sell" or $limitPrice > $this->marketStop and $this->side == "Buy");
         $this->log->info("attemting Market order as limit was not filled",["marketStop"=>$this->marketStop]);
         $this->true_cancel_all_orders();
         sleep(2);
