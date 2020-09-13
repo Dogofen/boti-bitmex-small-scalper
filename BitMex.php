@@ -267,7 +267,7 @@ class BitMex {
     );
     $positions = $this->authQuery($data);
     if (!$positions) {
-        throw new Exception("Failed to create an order");
+        throw new Exception("Failed to retrieve Open positions");
     }
 
     $openPositions = array();
@@ -278,6 +278,17 @@ class BitMex {
     }
 
     return $openPositions;
+  }
+
+  public function getPosition($symbol, $count) {
+    $data['method'] = "GET";
+    $data['function'] = "position?filter=";
+    $data['params'] = array(
+    );
+    $filter = rawurlencode(json_encode(array("symbol"=>$symbol))).'&count='.$count;
+    $data['function'] = $data['function'].$filter;
+    $positions = $this->authQuery($data);
+    return $positions;
   }
 
   /*

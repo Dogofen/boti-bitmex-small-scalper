@@ -335,8 +335,8 @@ class Trader {
     }
 
     public function limitCloseOrElse() {
-        $this->log->info("Decided to limit close the position",["ticker"=>$lastTicker]);
         $lastLimitPrice = $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap;
+        $this->log->info("Decided to limit close the position",["ticker"=>$lastLimitPrice]);
         $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $this->amount, $lastLimitPrice);
         sleep(5);
         if (!$this->are_open_positions()) {
@@ -422,16 +422,6 @@ class Trader {
         $compoundVisit = False;
         $stopCounter = 0;
 
-        try {
-            $wallet = $this->bitmex->getWallet();
-        }  catch (Exception $e) {
-            $this->log->error("Falied to et wallet.",[]);
-        }
-        $wallet = end($wallet);
-        $walletAmout = $wallet['walletBalance'];
-        $this->log->info("wallet has ".$walletAmout." btc in it", ["wallet"=>$walletAmout]);
-
-
         $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
         $scalpInfo = json_decode(json_encode($scalpInfo), true);
         $lastCandle = $scalpInfo['last'];
@@ -459,7 +449,6 @@ class Trader {
         else {
             $price = $lastCandle['close'];
         }
-
         if (!$this->true_create_order('Limit', $this->side, $this->initialAmount, $price)) {
             shell_exec("rm ".$this->tradeFile);
             $this->log->error("Failed to create order", ['side'=>$this->side]);
@@ -471,16 +460,42 @@ class Trader {
             return False;
         }
         $this->log->info("limit Order got filled",['fill'=>True]);
+        try {
+            $wallet = $this->bitmex->getWallet();
+        }  catch (Exception $e) {
+            $this->log->error("Falied to et wallet.",[]);
+        }
+
+        try {
+            $pos = $this->bitmex->getPosition($this->symbol, 1);
+        }  catch (Exception $e) {
+            $this->log->error("Falied to get position.",[]);
+        }
+
+        $pnl = $pos[0]['realisedPnl'];
+        $wallet = end($wallet);
+        $walletAmout = $wallet['walletBalance'];
+        $this->log->info("wallet has ".$walletAmout." btc in it", ["realisedPnl"=>$pnl]);
+
 
         $this->log->info("Targets are: ", ['targets'=>$this->targets]);
         $this->log->info("stopLoss are", ['stopLoss'=>$this->stopLoss]);
         $stop = $this->stopLoss[$stopCounter];
         sleep(2);
+        $this->amount = abs($this->are_open_positions()['currentQty']);//amount gets updated for the first time.
+        $tmpAmount = $this->amount;
+        $counter = 0;
         foreach ($emas as $key=>$target) {
-            $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), intval($this->initialAmount/$numOfLimitCloseOrders), round($target, $this->priceRounds[$this->symbol]));
+            $counter +=1;
+            if($counter == $numOfLimitCloseOrders) {
+                $amount = $tmpAmount;
+            } else {
+                $amount = intval($this->amount/$numOfLimitCloseOrders);
+                $tmpAmount -= $amount;
+            }
+            $order = $this->true_create_order('Limit', $this->get_opposite_trade_side(), $amount, round($target, $this->priceRounds[$this->symbol]));
             $this->targets[$key] = array($order['orderID'], round($target, $this->priceRounds[$this->symbol]));
         }
-        $this->amount = abs($this->are_open_positions()['currentQty']);//amount gets updated for the first time.
         $openOrders = $this->are_open_orders();
         $sumOfLimitOrders = 0;
         foreach($openOrders as $order) {
@@ -602,15 +617,23 @@ class Trader {
                 }
                 $this->log->info("new stopLoss been set acording to ticker:".$lastPrice." and interval:".$this->stopLossInterval, ['stopLoss'=>$this->stopLoss]);
                 $stop = $this->stopLoss[0];
-                $targetAmount = intval($this->amount/$numOfLimitCloseOrders);
-                $this->log->info("Updating targets as the amount changed.",["Target Amount"=>$targetAmount]);
                 $ids = array();
                 $amounts = array();
+
+                $counter = 0;
+                $tmpAmount = $this->amount;
                 foreach ($this->targets as $target) {
+                    $counter +=1;
                     if (!$this->get_open_order_by_id($this->targets[$key][0])) {//Target does not exists
                         continue;
                     }
                     array_push($ids, $target[0]);
+                    if($counter == $numOfLimitCloseOrders) {
+                        $targetAmount = $tmpAmount;
+                    } else {
+                        $targetAmount = intval($this->amount/$numOfLimitCloseOrders);
+                        $tmpAmount -= $targetAmount;
+                    }
                     array_push($amounts, $targetAmount);
                 }
                 $this->true_bulk_edit($ids, null, $amounts, null);
@@ -640,9 +663,16 @@ class Trader {
         }
         $wallet = end($wallet);
         $currentWalletAmout = $wallet['walletBalance'];
+        try {
+            $pos = $this->bitmex->getPosition($this->symbol, 1);
+        }  catch (Exception $e) {
+            $this->log->error("Falied to get position.",[]);
+        }
+
+        $currentPnl = $pos[0]['realisedPnl'];
         $this->log->info("wallet has ".$currentWalletAmout." btc in it", ["previouswallet"=>$walletAmout]);
-        $res = ($currentWalletAmout-$walletAmout) < 0 ? "Loss":"Win";
-        $this->log->info("Trade made ".($currentWalletAmout-$walletAmout), ["result"=>$res]);
+        $res = ($currentPnl-$pnl) < 0 ? "Loss":"Win";
+        $this->log->info("Trade made ".($currentPnl-$pnl), ["result"=>$res]);
 
         if (microtime(true) - $this->startTime < 60) {
             $this->log->info("waiting the remaining of the timeframe to finish",['timeframe'=>$this->timeFrame]);

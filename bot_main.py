@@ -14,13 +14,13 @@ sleep(2)
 with open('conf.json') as json_file:
     config = json.load(json_file)
 
-amount = config['amount']
 closeInterval = config['closeInterval']
 timeFrame = config['timeframe']
 historicalFile ="_historical.json";
 outPutFile = "_scalp_info.json"
 
 symbol = sys.argv[1]
+amount = config['amount'][symbol]
 side   = sys.argv[2]
 times  = sys.argv[3]
 stopPx = sys.argv[4]
@@ -30,10 +30,6 @@ counter = 0
 print("looking for {} Trades of {} {}".format(times, side, symbol))
 logger.info("looking for {} Trades of {} {}".format(times, side, symbol))
 data = False
-with open("{}{}".format(symbol, historicalFile)) as json_file:
-    data = json.load(json_file)
-    data.reverse()
-    data.pop()
 while (counter < int(times)):
     try:
         with open("{}{}".format(symbol, historicalFile)) as json_file:
