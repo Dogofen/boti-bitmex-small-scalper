@@ -112,9 +112,10 @@ class BitMex {
       curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
       curl_setopt($this->ch, CURLOPT_HEADER, 1);
       $return = curl_exec($this->ch);
-      $limitArray = preg_split("/X-RateLimit-Reset/",$return);
-      $xLimit = preg_split("/X-RateLimit-Limit: 60/",$limitArray[0]);
-      return trim($xLimit[1]);
+      $limitArray = preg_split("/eset/",$return);
+      $xLimit = preg_split("/imit: 60/",$limitArray[0]);
+      preg_match_all('!\d+!', trim($xLimit[1]), $matches);
+      return intval($matches[0][0]);
   }
 
 

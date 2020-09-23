@@ -4,8 +4,14 @@ require_once("Trader.php");
 
 $trader = New Trader($argv[1], $argv[2], $argv[3], $argv[4]);
 
-if (isset($argv[5]) and $argv[5] == "only_open") {
+if (isset($argv[5]) and $argv[5] == "open_only") {
     return $trader->trade_open();
+}
+if (isset($argv[5]) and $argv[5] == "take_profit") {
+    return $trader->take_profit();
+}
+if (isset($argv[5]) and $argv[5] == "manage") {
+    return $trader->trade_manage();
 }
 return $trader->scalp_open_and_manage();
 ?>
