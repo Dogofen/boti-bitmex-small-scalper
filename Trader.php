@@ -201,8 +201,7 @@ class Trader {
                 sleep(1);
                 continue;
             }
-            $this->log->info("Position has been created on Bitmex.", ['Strategy'=>$this->strategy.' '.$this->side]);
-            $this->log->info("Position successful, OrderId:".$order['orderID'], ['price'=>$order['price']]);
+            $this->log->info("Position successful, OrderId:".$order['orderID'], ['price'=>$order['price'], 'amount'=>$amount, 'stop'=>$stopPx]);
             break;
         } while (1);
         return $order;
@@ -806,6 +805,10 @@ class Trader {
         $this->log->info("wallet has ".$currentWalletAmout." btc in it", ["previouswallet"=>$walletAmout]);
         $res = ($currentPnl-$pnl) < 0 ? "Loss":"Win";
         $this->log->info("Trade made ".($currentPnl-$pnl), ["result"=>$res]);
+    }
+
+    public function create_limit() {
+        $order = $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->stopPx);
     }
 }
 

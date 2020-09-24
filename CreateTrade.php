@@ -13,5 +13,8 @@ if (isset($argv[5]) and $argv[5] == "take_profit") {
 if (isset($argv[5]) and $argv[5] == "manage") {
     return $trader->trade_manage();
 }
+if (isset($argv[5]) and $argv[5] == "limit") {
+    return $trader->create_limit();
+}
 return $trader->scalp_open_and_manage();
 ?>
