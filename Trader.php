@@ -410,7 +410,7 @@ class Trader {
             $this->log->info("Open Orders have changed or updated.", ["sum of limit orders"=>$this->sumOfLimitOrders]);
         }
         try {
-            $unrealisedPnl = $this->get_open_orders()['unrealisedPnl'];
+            $unrealisedPnl = $this->are_open_positions()['unrealisedPnl'];
         } catch (Exception $e) {
             $this->log->error("Failed to get openOrders.",[]);
             return;
