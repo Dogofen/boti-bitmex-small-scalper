@@ -24,14 +24,13 @@ class Trader {
     private $timeFrame;
     private $startTime;
     private $leap;
-    private $stopPx;
     private $maxCompunds;
     private $sumOfLimitOrders;
     private $numOfLimitCloseOrders;
     private $openOrders;
 
 
-    public function __construct($symbol, $side, $amount, $stopPx=null, $targets=null) {
+    public function __construct($symbol, $side, $amount, $targets=null) {
         $this->tradeFile = $this->strategy."_".$symbol;
         if (file_exists($this->tradeFile)) {
             return;
@@ -54,11 +53,11 @@ class Trader {
         $this->log->info('---------------------------------- New Order ----------------------------------', ['Sepparator'=>'---']);
         $this->priceRounds = $config['priceRounds'];
         $this->symbol = $symbol;
-        $this->stopPx = $stopPx;
         $scalpInfo = json_decode(file_get_contents($this->symbol.self::SCALP_PATH));
         $scalpInfo = json_decode(json_encode($scalpInfo), true);
         $this->stopLossInterval = floatval($config['stopLoss'][$this->symbol]);
         $lastTicker = $scalpInfo['last'];
+        $this->maxLoss = -$config['maxLoss'];
 
         if ($side == "Buy") {
             $this->log->info("Calculating Stop loss for Buy.", ['lastCandle'=>$lastTicker]);
@@ -174,9 +173,6 @@ class Trader {
         } while (!is_array($result));
     }
 
-
-
-
     public function true_create_order($type, $side, $amount, $price, $stopPx = null) {
         $this->log->info("Sending a Create Order command", ['side'=>$side.' '.$amount.' contracts, Price=>'.$price]);
         $order = False;
@@ -232,6 +228,7 @@ class Trader {
         }
         return False;
     }
+
     public function get_open_orders() {
         $openOrders = null;
         do {
@@ -255,6 +252,7 @@ class Trader {
         }
         return False;
     }
+
     public function get_order_book() {
         $orderBook = null;
         do {
@@ -297,6 +295,7 @@ class Trader {
         }
         return False;
     }
+
     public function is_limit() {
         $openOrders = $this->get_open_orders();
         if (!is_array($openOrders)) {
@@ -309,6 +308,7 @@ class Trader {
         }
         return False;
     }
+
     public function num_of_closing_orders() {
         sleep(1);
         $openOrders= $this->get_open_orders();
@@ -341,8 +341,6 @@ class Trader {
         } while($this->are_open_positions() === False);
         return True;
     }
-
-
 
     public function limitCloseOrElse() {
         $lastLimitPrice = $this->get_limit_price($this->get_opposite_trade_side()) + $this->leap;
@@ -396,7 +394,6 @@ class Trader {
         $this->log->info("Limit order was filled",["price"=>$lastLimitPrice]);
     }
 
-
     public function update_trade_info() {
         $this->openOrders= $this->get_open_orders();
         $num = 0;
@@ -411,6 +408,17 @@ class Trader {
         if ($sumOfLimitOrders != $this->sumOfLimitOrders) {
             $this->sumOfLimitOrders = $sumOfLimitOrders;
             $this->log->info("Open Orders have changed or updated.", ["sum of limit orders"=>$this->sumOfLimitOrders]);
+        }
+        try {
+            $unrealisedPnl = $this->get_open_orders()['unrealisedPnl'];
+        } catch (Exception $e) {
+            $this->log->error("Failed to get openOrders.",[]);
+            return;
+        }
+        if ($unrealisedPnl < $this->maxLoss) {
+            $this->log->info("position needs to close as it breached max Loss",["Penalty"=>$unrealisedPnl]);
+            $this->limitCloseOrElse();
+            return;
         }
         try {
             $rate= $this->bitmex->getXrateLimit();
@@ -710,105 +718,6 @@ class Trader {
             } while (microtime(true) - $this->startTime < 60);
         }
         return True;
-    }
-
-    public function trade_open() {
-        if (file_exists($this->tradeFile)) {
-            return false;
-        }
-        shell_exec('touch '.$this->tradeFile);
-        $this->limit_open_or_close($this->side);
-        sleep(2);
-        $this->amount = abs($this->are_open_positions()['currentQty']);
-        sleep(2);
-        if ($stopOrder = $this->is_stop()) {
-            $this->true_edit($stopOrder, null, $this->amount, $this->stopPx);
-        } else {
-            $this->true_create_order('Stop', $this->get_opposite_trade_side(), $this->amount, null, $this->stopPx);
-        }
-        return True;
-    }
-
-    public function take_profit() {
-        if (file_exists($this->tradeFile)) {
-            return false;
-        }
-        shell_exec('touch '.$this->tradeFile);
-        $this->limit_open_or_close($this->side);
-        $this->amount = abs($this->are_open_positions()['currentQty']);
-        if ($this->amount == 0) {
-            $this->true_cancel_all_orders();
-            return True;
-        }
-        if ($stopOrder = $this->is_stop()) {
-            $this->true_edit($stopOrder, null, $this->amount, null);
-            return True;
-        } else {
-            $this->log->error("StopLoss order was not found.",[$this->get_open_orders()]);
-        }
-
-        return False;
-    }
-
-    public function trade_manage() {
-        if (file_exists($this->tradeFile)) {
-            return false;
-        }
-        shell_exec('touch '.$this->tradeFile);
-        $wallet = False;
-        try {
-            $wallet = $this->bitmex->getWallet();
-        }  catch (Exception $e) {
-            $this->log->error("Falied to et wallet.",[]);
-        }
-        $this->wait_on_limit_order();
-        try {
-            $pos = $this->bitmex->getPosition($this->symbol, 1);
-        }  catch (Exception $e) {
-            $this->log->error("Falied to get position.",[]);
-        }
-        $pnl = $pos[0]['realisedPnl'];
-        $wallet = end($wallet);
-        $walletAmout = $wallet['walletBalance'];
-        $this->log->info("wallet has ".$walletAmout." btc in it", ["realisedPnl"=>$pnl]);
-
-        $targetInfo = json_decode(file_get_contents($this->symbol."_manage_info.json"));
-        $this->targets = json_decode(json_encode($targetInfo), true);
-
-        $this->log->info("Targets are: ", ['targets'=>$this->targets]);
-        $this->amount = 0;
-        foreach ($this->targets as $target) {
-            $order = $this->true_create_order('Limit', null, $target['amount'], $target['price']);
-            $this->amount += $target['amount'];
-        }
-        $this->true_create_order('Stop', null, $this->amount, null, $this->stopPx);
-
-        do {
-            sleep(3);
-        } while ($this->are_open_positions() !== False);
-        $this->true_cancel_all_orders();
-
-        try {
-            $wallet = $this->bitmex->getWallet();
-        } catch (Exception $e) {
-            $this->log->error("Failed to get wallet.",[]);
-        }
-        $wallet = end($wallet);
-        $currentWalletAmout = $wallet['walletBalance'];
-        try {
-            $pos = $this->bitmex->getPosition($this->symbol, 1);
-        }  catch (Exception $e) {
-            $this->log->error("Falied to get position.",[]);
-        }
-
-        $currentPnl = $pos[0]['realisedPnl'];
-        $this->log->info("wallet has ".$currentWalletAmout." btc in it", ["previouswallet"=>$walletAmout]);
-        $res = ($currentPnl-$pnl) < 0 ? "Loss":"Win";
-        $this->log->info("Trade made ".($currentPnl-$pnl), ["result"=>$res]);
-    }
-
-    public function create_limit() {
-        $order = $this->true_create_order('Limit', $this->side, $this->initialAmount, $this->stopPx);
     }
 }
 

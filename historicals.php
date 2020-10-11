@@ -51,5 +51,5 @@ do {
         $config = include('config.php');
         file_put_contents('conf.json', json_encode($config));
     }
-} while (strpos(shell_exec("ps -x|grep bot_main.py"), $symbol) !== false);
+} while (strpos(shell_exec("ps -x|grep bot_main.py"), 'MacOS') !== false);
 ?>

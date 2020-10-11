@@ -9,7 +9,6 @@ botLogger = Logger()
 logger = botLogger.init_logger()
 logger.info('Boti Trading system initiated')
 
-os.system("php historicals.php &")
 sleep(2)
 with open('conf.json') as json_file:
     config = json.load(json_file)
@@ -21,10 +20,9 @@ outPutFile = "_scalp_info.json"
 
 symbol = sys.argv[1]
 amount = config['amount'][symbol]
+print(amount)
 side   = sys.argv[2]
 times  = sys.argv[3]
-stopPx = sys.argv[4]
-strategy = sys.argv[5]
 tradeFile = 'scalp_{}'.format(symbol)
 counter = 0
 print("looking for {} Trades of {} {}".format(times, side, symbol))
@@ -61,23 +59,25 @@ while (counter < int(times)):
     if  float(band_low.iloc[-1]) - float(data[-1]['close']) >= closeInterval[symbol]["Buy"]:
         if side == "Buy" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
-                os.system("php CreateTrade.php {} Buy {} {} {} &".format(symbol, amount, stopPx, strategy))
+                os.system("php CreateTrade.php {} Buy {} &".format(symbol, amount))
                 logger.info("Buy Trade initiated diff is: {} and interval is: {}".format(float(band_low.iloc[-1]) - float(data[-1]['close']), closeInterval[symbol]["Buy"]))
+                logger.info("php CreateTrade.php {} Buy {} &".format(symbol, amount))
                 counter = counter + 1
                 print("number of executions is {}".format(counter))
     if float(data[-1]['close']) - float(band_high.iloc[-1]) >= closeInterval[symbol]["Sell"]:
         if side == "Sell" or side == "Both":
             if not os.path.exists(tradeFile) and datetime.datetime.now().minute%timeFrame == 0:
-                os.system("php CreateTrade.php {} Sell {} {} {} &".format(symbol, amount, stopPx, strategy))
+                os.system("php CreateTrade.php {} Sell {} &".format(symbol, amount))
                 logger.info("Sell Trade initiated diff is: {} and interval is: {}".format(float(data[-1]['close']) - float(band_high.iloc[-1]), closeInterval[symbol]["Sell"]))
                 counter = counter + 1
                 logger.info("number of executions is {}".format(counter))
+                logger.info("php CreateTrade.php {} Sell {} &".format(symbol, amount))
                 print("number of executions is {}".format(counter))
     logger.info("current indicators bands: {} and candle: {}".format(scalp_info['bands'], data[-1]))
     try:
         with open('conf.json') as json_file:
             config = json.load(json_file)
-            amount = config['amount']
+            amount = config['amount'][symbol]
             closeInterval = config['closeInterval']
             timeFrame = config['timeframe']
 
